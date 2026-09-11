@@ -1,0 +1,57 @@
+{
+  "protocol_version": "1.0",
+  "task_id": "e0-persistence-tests-001",
+  "status": "ready",
+  "objective": "Create a real isolated regression test suite for E0 Persistent Individual migration. Do not modify the persistence implementation in this task. Implement tests/test_persistence_migration.gd with no placeholders. The suite must verify: (1) default destination resolves to user://alma/individual.json, (2) explicit save_path bypasses automatic migration, (3) save/load preserves individual_id, (4) memory objects/episodes/total_episodes persist, (5) working memory is not restored, (6) learning models/contexts/skills/flight persist, (7) valid legacy primary migrates, (8) corrupt legacy primary plus valid legacy .bak migrates, (9) valid user primary wins over legacy, (10) corrupt user primary plus valid user .bak wins over legacy, (11) legacy original remains unchanged after migration, (12) migrated data preserves individual_id and central agent/world state, (13) existing user .bak recovery still works, and (14) explicit test paths never write to the real user://alma location. Tests involving default user:// or legacy res:// migration MUST run in an isolated temporary Godot test environment or equivalent sandbox and MUST NOT read, overwrite, rename, back up, or delete the real Alma save. Temporary files/directories must be cleaned after the test. If safe isolation cannot be guaranteed, stop and report a blocker rather than running the migration tests.",
+  "allowed_files": [
+    "tests/test_persistence_migration.gd",
+    "AI_RESULT.json"
+  ],
+  "read_only_files": [
+    "scripts/persistence.gd",
+    "scripts/cognition/agent.gd",
+    "scripts/cognition/memory.gd",
+    "scripts/cognition/learning.gd",
+    "scripts/world/world_state.gd",
+    "project.godot",
+    "Kor tester.cmd"
+  ],
+  "forbidden_files": [
+    "scripts/persistence.gd",
+    "scripts/cognition/agent.gd",
+    "scripts/view/inspector.gd",
+    "scripts/cognition/neural_brain_bridge.gd",
+    "brain/",
+    "project.godot",
+    "VERSION.txt"
+  ],
+  "validation_commands": [
+    "git diff --check",
+    "tools\\Godot_console.exe --headless --path . --script res://tests/test_persistence_migration.gd"
+  ],
+  "stop_conditions": [
+    "Current branch is not bionic/persistent-individual",
+    "Any modified or untracked file exists outside allowed_files except local .night_shift infrastructure",
+    "Any attempted write targets a path outside allowed_files",
+    "The test cannot guarantee isolation from the real Alma user:// save",
+    "Any validation command is unavailable or not whitelisted",
+    "Any persistence migration test fails",
+    "Any Godot parse/runtime error occurs",
+    "The task would require modifying scripts/persistence.gd or any other implementation file"
+  ],
+  "result_requirements": {
+    "required_fields": [
+      "protocol_version",
+      "task_id",
+      "status",
+      "changed_files",
+      "validation_results",
+      "git_diff_check",
+      "git_status",
+      "summary",
+      "blockers",
+      "commit_sha"
+    ],
+    "raw_evidence_required": true
+  }
+}
