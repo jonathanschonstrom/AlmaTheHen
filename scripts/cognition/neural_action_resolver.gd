@@ -171,17 +171,17 @@ func focused_manipulation_candidate(agent) -> Dictionary:
 	return {}
 
 func neural_affordance_inputs(agent) -> Dictionary:
-	# 0.5 is the neutral point for the signed learned-food transport channel.
+	# 0.5 is the neutral point for signed learned-food evidence. The historical
+	# wire name substrate_affordance is retained, but in v5 it carries the current
+	# executable *experiment* opportunity for either substrate or classic objects.
 	var result = {"learned_food_access": 0.5, "substrate_affordance": 0.0}
 	var focus = focused_manipulation_candidate(agent)
 	if focus.is_empty():
 		return result
 	result.learned_food_access = clampf(float(focus.learned_food_access), 0.0, 1.0)
 	var mode = str(focus.get("focus_mode", ""))
-	if mode != "extinction":
-		# Keep the physical affordance and its uncertainty conceptually separate;
-		# only their product is transported as the current substrate experiment opportunity.
-		result.substrate_affordance = clampf(float(focus.substrate_experiment), 0.0, 1.0)
+	if mode == "experiment":
+		result.substrate_affordance = clampf(float(focus.experiment_evidence), 0.0, 1.0)
 	return result
 
 func resolve_manipulation(agent) -> Dictionary:
