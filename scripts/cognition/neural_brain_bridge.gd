@@ -115,10 +115,10 @@ func poll_connection(agent) -> void:
 	elif connection_status in [StreamPeerTCP.STATUS_ERROR, StreamPeerTCP.STATUS_NONE]:
 		if status == "online":
 			status = "frånkopplad"
-			pending = false
-			pending_utility_family = ""
-			if mode == "control":
-				agent.neural_bridge_unavailable("NeuralBrain tappade anslutningen; ingen utility-fallback används.")
+		pending = false
+		pending_utility_family = ""
+		if mode == "control":
+			agent.neural_bridge_unavailable("NeuralBrain tappade anslutningen; ingen utility-fallback används.")
 
 func send_snapshot(agent) -> void:
 	request_id += 1
