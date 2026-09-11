@@ -1,9 +1,9 @@
-"""BirdAI NeuralBrain v0.2.6 (reconstructed v0.5.3 lineage).
+"""BirdAI NeuralBrain v0.2.7 (reconstructed v0.5.3 lineage).
 
 Shadow-mode spiking motivation, affordance gating, temporal commitment and
 basal-ganglia action competition for BirdAI. Godot remains the only actuator.
 
-v0.2.6 is intentionally still a family-level brain: it decides *what kind* of
+v0.2.7 is intentionally still a family-level brain: it decides *what kind* of
 behaviour is currently most appropriate (eat, rest, explore, manipulate ...),
 not the exact target object or motor sequence. It receives no utility score,
 utility ranking or utility-selected action from Godot.
@@ -18,6 +18,8 @@ from typing import Dict, Iterable, Mapping, Optional, Sequence
 import numpy as np
 
 from temporal_commitment import TemporalCommitment
+
+BG_READOUT_WINDOW = 0.030
 
 ACTIONS = ("FLEE", "DRINK", "EAT", "REST", "SOCIAL", "CARE", "EXPLORE", "MANIPULATE")
 INPUT_KEYS = (
@@ -156,7 +158,7 @@ def _explore_safety_gate(x: Sequence[float]) -> float:
 def _explore_value(x: Sequence[float]) -> float:
     """Exact v0.2 exploration policy, written as factorized subterms.
 
-    The analytical policy is unchanged. The spiking network in v0.2.6 mirrors
+    The analytical policy is unchanged. The spiking network in v0.2.7 mirrors
     this factorization so an eight-dimensional decoder no longer has to learn
     all curiosity, search and safety interactions in one population.
     """
@@ -274,6 +276,8 @@ class ShadowDecision:
     competition_values: Dict[str, float]
     competition_evidence: Dict[str, float]
     basal_ganglia_output: Dict[str, float]
+    basal_ganglia_instantaneous: Dict[str, float]
+    basal_ganglia_readout_window_seconds: float
     affordance_gates: Dict[str, float]
     explore_diagnostics: Dict[str, object]
     commitment: Dict[str, object]
@@ -325,7 +329,7 @@ class NeuralBrain:
             ], dtype=float)
             return np.vstack([points, anchors])
 
-        with nengo.Network(label="BirdAI NeuralBrain v0.2.6 (reconstructed v0.5.3 lineage)", seed=self.seed) as model:
+        with nengo.Network(label="BirdAI NeuralBrain v0.2.7 (reconstructed v0.5.3 lineage)", seed=self.seed) as model:
             input_node = nengo.Node(lambda _t: self.input_values, size_out=len(INPUT_KEYS), label="Embodied input")
             commitment_node = nengo.Node(
                 lambda _t: self.commitment_input_values,
@@ -580,7 +584,17 @@ class NeuralBrain:
         action_values = np.asarray(self.sim.data[self.action_value_probe][-1], dtype=float)
         evidence = np.asarray(self.sim.data[self.competition_evidence_probe][-1], dtype=float)
         competition_values = np.asarray(self.sim.data[self.competition_probe][-1], dtype=float)
-        bg_output = np.asarray(self.sim.data[self.bg_probe][-1], dtype=float)
+        bg_trace = np.asarray(self.sim.data[self.bg_probe], dtype=float)
+        bg_instantaneous = np.asarray(bg_trace[-1], dtype=float)
+        # A spiking basal-ganglia circuit should not be interpreted from one
+        # millisecond endpoint sample. The probe is already low-pass filtered
+        # (10 ms); v0.2.7 integrates only the final 30 ms of that *same* BG
+        # output. This changes no valuation, competition, BG weights, gain or
+        # bias; it only stabilizes the motor-selection readout across spiking
+        # realizations and numerical backends.
+        readout_steps = max(1, int(round(BG_READOUT_WINDOW / self.dt)))
+        bg_window = bg_trace[-min(readout_steps, len(bg_trace)):]
+        bg_output = np.asarray(np.mean(bg_window, axis=0), dtype=float)
         def probe_scalar(probe) -> float:
             return float(np.asarray(self.sim.data[probe][-1], dtype=float).reshape(-1)[0])
         explore_diagnostics = {
@@ -600,6 +614,8 @@ class NeuralBrain:
             competition_values={name: float(competition_values[i]) for i, name in enumerate(ACTIONS)},
             competition_evidence={name: float(evidence[i]) for i, name in enumerate(ACTIONS)},
             basal_ganglia_output={name: float(bg_output[i]) for i, name in enumerate(ACTIONS)},
+            basal_ganglia_instantaneous={name: float(bg_instantaneous[i]) for i, name in enumerate(ACTIONS)},
+            basal_ganglia_readout_window_seconds=float(BG_READOUT_WINDOW),
             affordance_gates={name: float(gates[i]) for i, name in enumerate(ACTIONS)},
             explore_diagnostics=explore_diagnostics,
             commitment=commitment, confidence=clamp01(competition_margin / 0.40),

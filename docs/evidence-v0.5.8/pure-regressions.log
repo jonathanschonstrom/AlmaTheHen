@@ -1,0 +1,36 @@
+test_bg_architecture_remains_bg100_without_bias (__main__.BGReadoutRegression.test_bg_architecture_remains_bg100_without_bias) ... ok
+test_bg_readout_is_final_30ms_mean_of_existing_filtered_probe (__main__.BGReadoutRegression.test_bg_readout_is_final_30ms_mean_of_existing_filtered_probe) ... ok
+test_no_policy_or_competition_formula_changed_by_readout_patch (__main__.BGReadoutRegression.test_no_policy_or_competition_formula_changed_by_readout_patch) ... ok
+test_all_four_explore_decoders_use_physical_eval_points (__main__.ExploreEvalPointRegression.test_all_four_explore_decoders_use_physical_eval_points) ... ok
+test_explore_analytical_functions_are_identical_to_v025 (__main__.ExploreEvalPointRegression.test_explore_analytical_functions_are_identical_to_v025) ... ok
+test_explore_diagnostics_probe_existing_connections (__main__.ExploreEvalPointRegression.test_explore_diagnostics_probe_existing_connections) ... ok
+test_mixed_manipulate_policy_margin_remains_original (__main__.ExploreEvalPointRegression.test_mixed_manipulate_policy_margin_remains_original) ... ok
+test_physical_eval_domains_fit_ensemble_radii (__main__.ExploreEvalPointRegression.test_physical_eval_domains_fit_ensemble_radii) ... ok
+test_v025_radius_scaling_would_leave_declared_physical_domains (__main__.ExploreEvalPointRegression.test_v025_radius_scaling_would_leave_declared_physical_domains) ... ok
+test_all_python_sources_parse (__main__.PolicyRegression.test_all_python_sources_parse) ... ok
+test_canonical_scenarios_seeds_and_temporal_inputs_unchanged (__main__.PolicyRegression.test_canonical_scenarios_seeds_and_temporal_inputs_unchanged) ... ok
+test_contract_and_decay_unchanged (__main__.PolicyRegression.test_contract_and_decay_unchanged) ... ok
+test_manipulate_factorization_unseen_domain_and_corners (__main__.PolicyRegression.test_manipulate_factorization_unseen_domain_and_corners) ... ok
+test_no_analytical_fallback_in_runtime_class (__main__.PolicyRegression.test_no_analytical_fallback_in_runtime_class) ... ok
+test_original_manipulate_reference_is_unedited (__main__.PolicyRegression.test_original_manipulate_reference_is_unedited) ... ok
+test_v05_policy_equivalence_20000_random_states (__main__.PolicyRegression.test_v05_policy_equivalence_20000_random_states) ... ok
+test_affordance_boundary_and_general_explore (__main__.TemporalRegression.test_affordance_boundary_and_general_explore) ... ok
+test_affordance_loss_releases_before_next_sample (__main__.TemporalRegression.test_affordance_loss_releases_before_next_sample) ... ok
+test_clear_supported_evidence_acquires_latch (__main__.TemporalRegression.test_clear_supported_evidence_acquires_latch) ... ok
+test_clock_rewind_releases_old_latch (__main__.TemporalRegression.test_clock_rewind_releases_old_latch) ... ok
+test_free_projection_is_identity_including_negative_evidence (__main__.TemporalRegression.test_free_projection_is_identity_including_negative_evidence) ... ok
+test_hysteresis_invariant_all_actions_on_unseen_vectors (__main__.TemporalRegression.test_hysteresis_invariant_all_actions_on_unseen_vectors) ... ok
+test_margin_compares_to_incumbent_not_runner_up (__main__.TemporalRegression.test_margin_compares_to_incumbent_not_runner_up) ... ok
+test_repeated_holds_do_not_extend_expiry (__main__.TemporalRegression.test_repeated_holds_do_not_extend_expiry) ... ok
+test_reset_clears_state_and_bias (__main__.TemporalRegression.test_reset_clears_state_and_bias) ... ok
+test_strong_challenger_releases_latch (__main__.TemporalRegression.test_strong_challenger_releases_latch) ... ok
+test_strong_neural_evidence_cannot_latch_wrong_bg_action (__main__.TemporalRegression.test_strong_neural_evidence_cannot_latch_wrong_bg_action) ... ok
+test_switch_boundary_equality_holds (__main__.TemporalRegression.test_switch_boundary_equality_holds) ... ok
+test_threat_interrupts_and_blocks_nondefensive_reacquisition (__main__.TemporalRegression.test_threat_interrupts_and_blocks_nondefensive_reacquisition) ... ok
+test_weak_challenger_keeps_competition_and_selected_action (__main__.TemporalRegression.test_weak_challenger_keeps_competition_and_selected_action) ... ok
+test_weak_spurious_bg_cannot_acquire_latch (__main__.TemporalRegression.test_weak_spurious_bg_cannot_acquire_latch) ... ok
+
+----------------------------------------------------------------------
+Ran 31 tests in 3.802s
+
+OK

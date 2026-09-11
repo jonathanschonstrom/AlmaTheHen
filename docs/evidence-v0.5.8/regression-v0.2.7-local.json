@@ -1,0 +1,17 @@
+{
+  "status": "PASS",
+  "checks": 31,
+  "failures": [],
+  "details": {
+    "mixed_manipulate_analytical_manipulate": 0.22820000000000001,
+    "mixed_manipulate_analytical_explore": 0.16958347402183319,
+    "mixed_manipulate_analytical_margin": 0.05861652597816683,
+    "explore_gate_max_eval_norm": 1.972308292331602,
+    "explore_gate_radius": 2.1,
+    "factorization_states": 100032,
+    "factorization_max_abs_error": 2.220446049250313e-16,
+    "policy_random_states": 20000,
+    "policy_max_abs_error": 0.0
+  },
+  "canonical_runtime_checks_unchanged": 63
+}

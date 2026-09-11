@@ -1,0 +1,28 @@
+PASS agent exposes explicit neural-control state
+PASS neural family is resolved before any utility fallback path
+PASS neural authority precedes legacy utility branch
+PASS missing neural decision causes wait instead of utility fallback
+PASS legacy Godot safety override is disabled when NeuralBrain is authoritative
+PASS motor interruption in neural-control mode requires an NB-selected FLEE
+PASS bridge applies NB response to real agent in control mode
+PASS bridge defaults to control mode
+PASS utility retained as control-mode reference only
+PASS bridge failure explicitly avoids utility fallback
+PASS actuator resolver contains no utility scoring path
+PASS resolver covers FLEE
+PASS resolver covers DRINK
+PASS resolver covers EAT
+PASS resolver covers REST
+PASS resolver covers SOCIAL
+PASS resolver covers CARE
+PASS resolver covers EXPLORE
+PASS resolver covers MANIPULATE
+PASS REST remains executable without a visible rest target
+PASS SOCIAL remains executable without a visible person
+PASS CARE remains executable without a visible care site
+PASS controller experiment retains the existing semantic perception-to-NB interface
+PASS normal Godot runtime enables neural control
+PASS legacy shadow remains explicit opt-in mode
+PASS control runtime logs neural authority plus physical trajectory context
+PASS NeuralBrain model remains code-independent of utility ranking
+ALL STATIC NEURAL-CONTROL CHECKS PASS

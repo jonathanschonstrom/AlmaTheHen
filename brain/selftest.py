@@ -1,4 +1,4 @@
-"""Multi-seed runtime test for BirdAI NeuralBrain v0.2.6."""
+"""Multi-seed runtime test for BirdAI NeuralBrain v0.2.7."""
 from __future__ import annotations
 
 import argparse
@@ -82,7 +82,10 @@ def diagnostic_result(name: str, values: dict, expected: str, decision, analytic
         "action_values": decision.action_values,
         "competition_values": decision.competition_values,
         "basal_ganglia_output": decision.basal_ganglia_output,
+        "basal_ganglia_instantaneous": decision.basal_ganglia_instantaneous,
+        "basal_ganglia_readout_window_seconds": decision.basal_ganglia_readout_window_seconds,
         "bg_pick": max(decision.basal_ganglia_output, key=decision.basal_ganglia_output.get),
+        "bg_instantaneous_pick": max(decision.basal_ganglia_instantaneous, key=decision.basal_ganglia_instantaneous.get),
         "competition_evidence": decision.competition_evidence,
         "selection_source": decision.commitment["selection_source"],
         "affordance_gates": decision.affordance_gates,
@@ -119,7 +122,7 @@ def run_seed(seed: int) -> dict:
                 f"{name}: expected {expected}, selected {decision.selected}, BG={item['bg_pick']}; "
                 f"neural-values={item['neural_value_pick']}, "
                 f"competition={item['competition_value_pick']}, "
-                f"analytical={item['analytical_pick']}"
+                f"analytical={item['analytical_pick']}, instantaneous-BG={item['bg_instantaneous_pick']}"
             )
         results.append(item)
 
@@ -211,7 +214,7 @@ def main() -> int:
     report = {
         "status": "PASS" if not failures else "FAIL",
         "backend": "nengo",
-        "model": "NeuralBrain v0.2.6 reconstructed intero/extero contexts + physical-domain EXPLORE eval points + factorized MANIPULATE + explicit temporal hysteresis + stable subseeds + BG100",
+        "model": "NeuralBrain v0.2.7 reconstructed intero/extero contexts + physical-domain EXPLORE eval points + factorized MANIPULATE + explicit temporal hysteresis + stable subseeds + BG100",
         "neurons": 11890,
         "seeds": list(SEEDS),
         "checks_per_seed": 21,
@@ -229,7 +232,7 @@ def main() -> int:
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, indent=2), encoding="utf-8")
 
-    print(f"NeuralBrain v0.2.6 robustness test: {report['status']}")
+    print(f"NeuralBrain v0.2.7 robustness test: {report['status']}")
     for run in runs:
         print(f"  seed={run['seed']}: {run['passed']}/{run['checks']} PASS")
         for failure in run["failures"]:

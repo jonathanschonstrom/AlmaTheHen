@@ -1,4 +1,4 @@
-# BirdAI v0.5.7 / NeuralBrain v0.2.6 — Neural Control
+# BirdAI v0.5.8 / NeuralBrain v0.2.7 — Neural Control + BG Readout
 
 **Experimentkandidat. Ingen ny baslinje utses före Windows/Nengo-verifiering.**
 
@@ -10,7 +10,7 @@ Den neurala modellen är oförändrad från v0.5.6. Den stora skillnaden är int
 2. Kör `Installera NeuralBrain.cmd`.
 3. Kör `Kor NeuralBrain-regression.cmd`.
 4. Kör `Kor NeuralBrain-test.cmd`.
-5. Kör `Kor NeuralBrain-v0.2.6-robusthet.cmd` om den neurala v0.2.6-kandidaten också ska verifieras.
+5. Kör `Kor NeuralBrain-v0.2.7-robusthet.cmd` om den neurala v0.2.7-kandidaten också ska verifieras.
 6. Starta `Starta BirdAI.cmd`.
 
 Normal start använder neural control. Om NeuralBrain inte är tillgänglig finns **ingen utility-fallback**.
@@ -21,7 +21,7 @@ För den äldre diagnostiska kontrollformen, starta `Starta Neural Shadow.cmd`. 
 
 `värld/kropp -> perception -> NeuralBrain -> BG100/commitment -> vald familj -> neural_action_resolver -> agent/world`
 
-NeuralBrain v0.2.6 väljer fortfarande familj (`FLEE`, `DRINK`, `EAT`, `REST`, `SOCIAL`, `CARE`, `EXPLORE`, `MANIPULATE`) snarare än exakt objekt och motorsekvens. Den nya resolverkomponenten är därför ett poängfritt actuatorlager som väljer ett genomförbart sensoriskt mål inom den redan valda familjen.
+NeuralBrain v0.2.7 väljer fortfarande familj (`FLEE`, `DRINK`, `EAT`, `REST`, `SOCIAL`, `CARE`, `EXPLORE`, `MANIPULATE`) snarare än exakt objekt och motorsekvens. Den nya resolverkomponenten är därför ett poängfritt actuatorlager som väljer ett genomförbart sensoriskt mål inom den redan valda familjen.
 
 Utility används aldrig som family-selector i control-läge.
 
@@ -31,4 +31,9 @@ Utility används aldrig som family-selector i control-läge.
 - Explicit shadow: `data/neural-shadow.jsonl`
 - Godot runtime: `data/runtime.log`
 
-Se `RAPPORT-v0.5.7.md` för exakt avgränsning och Windows-acceptance.
+Se `RAPPORT-v0.5.8.md` för exakt avgränsning och Windows-acceptance.
+
+## GDScript resolver hotfix
+
+Update-paketet innehåller även `scripts/cognition/neural_action_resolver.gd`.
+Detta korrigerar tre lokala variabelnamn som tidigare hette `signal`, vilket är ett reserverat GDScript-nyckelord. Ingen besluts- eller NeuralBrain-policy ändras av denna korrigering.
