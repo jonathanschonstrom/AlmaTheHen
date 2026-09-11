@@ -1,0 +1,7 @@
+.godot/
+data/*.json
+data/*.bak
+data/*.tmp
+data/*.log
+tools/
+*.log
