@@ -19,8 +19,10 @@ require('kind == "forage"' not in resolver and 'kind == \'forage\'' not in resol
         "resolver contains no hardcoded forage-object rule")
 require('"ground"' in resolver and '"loose"' in resolver and 'return "scratch"' in resolver,
         "scratch is exposed by substrate cues rather than object identity")
-require('learned_food_access = clampf(predicted * reliability' in resolver,
-        "learned signal carries predicted food access without hunger multiplication")
+unsigned_transport = 'learned_food_access = clampf(predicted * reliability' in resolver
+signed_transport = 'learned_food_signed' in resolver and '"learned_food_access": 0.50 + 0.50 * learned_food_signed' in resolver
+require(unsigned_transport or signed_transport,
+        "resolver transports learned food consequence without hunger multiplication")
 require('BASE_INPUT_DIMS = len(INPUT_KEYS)' in model and 'input_node[INTEROCEPTIVE_DIMS:BASE_INPUT_DIMS]' in model,
         "original 16 neural channels retain their old anatomical slice")
 require('input_node[BASE_INPUT_DIMS:]' in model and 'cognitive_affordances' in model,

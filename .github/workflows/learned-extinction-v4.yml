@@ -1,0 +1,39 @@
+name: learned-extinction-v4
+
+on:
+  push:
+    branches:
+      - experiment/learned-extinction-v4
+
+jobs:
+  regressions:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install NeuralBrain dependencies
+        run: python -m pip install -r brain/requirements.txt
+      - name: Existing Neural-Control static contracts
+        run: python tests/test_neural_control_static.py
+      - name: Existing learned-affordance static contracts
+        run: python tests/test_learned_affordance_static.py
+      - name: Learned-extinction static contracts
+        run: python tests/test_learned_extinction_static.py
+      - name: v0.2.6 pure regressions
+        working-directory: brain
+        run: python test_regressions_v026.py
+      - name: Learned-affordance analytical regressions
+        working-directory: brain
+        run: python test_learned_affordance.py
+      - name: Learned-extinction analytical regressions
+        working-directory: brain
+        run: python test_learned_extinction.py
+      - name: Existing learned-affordance Nengo build
+        working-directory: brain
+        run: python test_nengo_build_la.py
+      - name: Signed-extinction Nengo build
+        working-directory: brain
+        run: python test_nengo_build_extinction.py
