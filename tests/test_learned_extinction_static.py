@@ -20,6 +20,9 @@ assert 'NEUTRAL_LEARNED_FOOD = 0.5' in adapter
 assert 'signed_prediction = (float(encoded_prediction) - NEUTRAL_LEARNED_FOOD) * 2.0' in adapter
 assert '_base._learned_food_manipulation_value = _signed_learned_food_manipulation_value' in adapter
 assert 'learned_positive = max(0.0' in adapter
-assert 'from neural_model_extinction import ACTIONS, ALL_INPUT_KEYS, NeuralBrain' in server
+assert (
+    'from neural_model_extinction import ACTIONS, ALL_INPUT_KEYS, NeuralBrain' in server
+    or 'from neural_model_feasibility import (' in server
+)
 
 print("PASS learned-extinction static contracts")

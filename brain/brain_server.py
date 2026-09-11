@@ -8,7 +8,12 @@ import sys
 import traceback
 from pathlib import Path
 
-from neural_model_extinction import ACTIONS, ALL_INPUT_KEYS, NeuralBrain
+from neural_model_feasibility import (
+    ACTIONS,
+    ALL_INPUT_KEYS,
+    NeuralBrain,
+    manipulation_feasibility_from_mapping,
+)
 
 HOST = "127.0.0.1"
 DEFAULT_PORT = 39393
@@ -71,6 +76,7 @@ def serve(port: int, seed: int) -> int:
                             "age": float(request.get("age", 0.0)),
                             "backend": "nengo",
                             "inputs": {key: float(inputs.get(key, 0.5 if key == "learned_food_access" else 0.0)) for key in ALL_INPUT_KEYS},
+                            "manipulation_feasibility": manipulation_feasibility_from_mapping(inputs),
                             "selected": decision.selected,
                             "confidence": decision.confidence,
                             "action_values": decision.action_values,
