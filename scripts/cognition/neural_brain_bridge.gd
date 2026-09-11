@@ -37,6 +37,7 @@ func start(requested_mode: String = "control") -> void:
 			"event": "session_start",
 			"mode": mode,
 			"neural_brain": "v0.2.6",
+			"experiment": "learned-affordance-la1",
 			"actuator_authority": "utility" if mode == "shadow" else "neural",
 			"port": PORT
 		}))
