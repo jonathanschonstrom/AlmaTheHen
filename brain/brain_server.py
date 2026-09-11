@@ -8,7 +8,7 @@ import sys
 import traceback
 from pathlib import Path
 
-from neural_model import ACTIONS, ALL_INPUT_KEYS, NeuralBrain
+from neural_model_extinction import ACTIONS, ALL_INPUT_KEYS, NeuralBrain
 
 HOST = "127.0.0.1"
 DEFAULT_PORT = 39393
@@ -70,7 +70,7 @@ def serve(port: int, seed: int) -> int:
                             "request_id": int(request.get("request_id", 0)),
                             "age": float(request.get("age", 0.0)),
                             "backend": "nengo",
-                            "inputs": {key: float(inputs.get(key, 0.0)) for key in ALL_INPUT_KEYS},
+                            "inputs": {key: float(inputs.get(key, 0.5 if key == "learned_food_access" else 0.0)) for key in ALL_INPUT_KEYS},
                             "selected": decision.selected,
                             "confidence": decision.confidence,
                             "action_values": decision.action_values,

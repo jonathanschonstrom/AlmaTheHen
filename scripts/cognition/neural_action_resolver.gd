@@ -7,6 +7,9 @@ extends RefCounted
 ## can actually be executed by the existing Godot agent/world API.
 
 const VALID_FAMILIES = ["FLEE", "DRINK", "EAT", "REST", "SOCIAL", "CARE", "EXPLORE", "MANIPULATE"]
+const POSITIVE_FOOD_THRESHOLD = 0.04
+const EXPERIMENT_THRESHOLD = 0.08
+const EXTINCTION_THRESHOLD = -0.08
 
 func resolve(agent, family: String) -> Dictionary:
 	family = family.to_upper()
@@ -40,8 +43,6 @@ func resolve(agent, family: String) -> Dictionary:
 				return make_choice(agent, "dust_bath", care, family, "NeuralBrain prioriterar fjädervård.")
 			return make_choice(agent, "preen", "self", family, "NeuralBrain prioriterar fjädervård.")
 		"EXPLORE":
-			# NeuralBrain has selected exploration; direction remains a low-level
-			# actuator choice until spatial target selection is moved into NB.
 			return make_choice(agent, "wander", "ground", family, "NeuralBrain prioriterar utforskning.")
 		"MANIPULATE":
 			var resolved = resolve_manipulation(agent)
@@ -49,7 +50,7 @@ func resolve(agent, family: String) -> Dictionary:
 			var action = str(resolved.get("action", ""))
 			if target.is_empty() or action.is_empty():
 				return {}
-			return make_choice(agent, action, target, family, "NeuralBrain prioriterar en möjlig manipulation; resolvern väljer bara vilket synligt affordance-mål som uttrycker beslutet.")
+			return make_choice(agent, action, target, family, "NeuralBrain prioriterar manipulation; resolvern uttrycker det target/action/context-spår som bär den neurala evidensen.")
 	return {}
 
 func make_choice(agent, action: String, target: String, family: String, reason: String) -> Dictionary:
@@ -68,8 +69,8 @@ func make_choice(agent, action: String, target: String, family: String, reason: 
 	}
 
 func manipulation_candidates(agent) -> Array:
-	# Candidate construction is deliberately drive-free. It exposes learned
-	# consequences and physical affordances; NeuralBrain decides their current value.
+	# Candidate construction is drive-free. It separates physical actionability,
+	# epistemic uncertainty and learned consequences. Current hunger is not used.
 	var candidates = []
 	for observation in agent.senses.visible:
 		var id = str(observation.id)
@@ -83,69 +84,117 @@ func manipulation_candidates(agent) -> Array:
 		var availability = 0.30 + proximity * 0.70
 		var context = agent.sensory_context(id)
 		var model = agent.learning.model(id, action, context)
-		var confidence = agent.learning.confidence(id, action, context)
-		var learned_food_access = 0.0
-		if float(model.count) > 0.0:
-			# Preserve the predicted consequence itself. Confidence/reliability reduces
-			# uncertain memories, but no current need is consulted here.
-			var predicted = maxf(0.0, float(model.effects.get("food_access", 0.0)))
-			var reliability = clampf(float(model.success), 0.0, 1.0) * (0.50 + 0.50 * confidence)
-			learned_food_access = clampf(predicted * reliability, 0.0, 1.0)
+		var count = maxf(0.0, float(model.count))
+		var confidence = clampf(agent.learning.confidence(id, action, context), 0.0, 1.0)
+		var success = clampf(float(model.success), 0.0, 1.0)
+
+		# Signed food prediction: positive evidence predicts future access; explicit
+		# learned absence/failure becomes negative evidence. Zero means unknown/neutral.
+		var learned_food_signed = 0.0
+		if count > 0.0:
+			var reliability = 0.50 + 0.50 * confidence
+			if model.effects.has("food_access"):
+				var predicted_food = clampf(float(model.effects.get("food_access", 0.0)), 0.0, 1.0)
+				if predicted_food > POSITIVE_FOOD_THRESHOLD:
+					learned_food_signed = predicted_food * success * reliability
+				else:
+					learned_food_signed = -confidence
+			elif success < 0.5:
+				learned_food_signed = -confidence * (1.0 - success)
+		learned_food_signed = clampf(learned_food_signed, -1.0, 1.0)
+
 		var cues = observation.cues
-		var substrate_physical = minf(float(cues.get("ground", 0.0)), float(cues.get("loose", 0.0)))
-		# Untried loose substrate invites an experiment; repeated neutral scratching
-		# habituates. A later learned food_access consequence can take over.
-		var substrate_uncertainty = 1.0 / (1.0 + float(model.count) * 0.70)
-		var substrate_affordance = substrate_physical * availability * (0.25 + 0.75 * substrate_uncertainty)
+		var substrate_physical = minf(float(cues.get("ground", 0.0)), float(cues.get("loose", 0.0))) * availability
+		var interaction_uncertainty = 1.0 / (1.0 + count * 0.70)
+		var substrate_experiment = substrate_physical * interaction_uncertainty
 		var kind = str(agent.world.objects[id].kind)
 		var classic = kind in ["ball", "box", "button", "cache", "treat"]
+		var classic_experiment = availability * interaction_uncertainty if classic else 0.0
+		var experiment_evidence = maxf(substrate_experiment, classic_experiment)
+
 		candidates.append({
 			"target": id,
 			"action": action,
+			"context": context,
 			"distance": distance,
 			"availability": availability,
-			"learned_food_access": learned_food_access,
-			"substrate_affordance": substrate_affordance,
+			"learned_food_signed": learned_food_signed,
+			"learned_food_access": 0.50 + 0.50 * learned_food_signed,
+			"substrate_physical": substrate_physical,
+			"substrate_experiment": substrate_experiment,
+			"interaction_uncertainty": interaction_uncertainty,
+			"experiment_evidence": experiment_evidence,
 			"classic": classic
 		})
 	return candidates
 
-func neural_affordance_inputs(agent) -> Dictionary:
-	var result = {"learned_food_access": 0.0, "substrate_affordance": 0.0}
-	for candidate in manipulation_candidates(agent):
-		result.learned_food_access = maxf(float(result.learned_food_access), float(candidate.learned_food_access))
-		result.substrate_affordance = maxf(float(result.substrate_affordance), float(candidate.substrate_affordance))
-	return result
-
-func resolve_manipulation(agent) -> Dictionary:
+func focused_manipulation_candidate(agent) -> Dictionary:
 	var candidates = manipulation_candidates(agent)
 	if candidates.is_empty():
 		return {}
-	# Target resolution is not a second motivational controller. Prefer the visible
-	# candidate carrying the strongest consequence/affordance evidence that NB just
-	# acted on. If none carries such evidence, retain the old nearest-object fallback.
-	var best = {}
-	var best_evidence = 0.0
+
+	# Attention is selected without physiological drives. Positive learned causal
+	# evidence wins first; otherwise the least-tested executable affordance gets an
+	# experiment. Only when neither exists do we expose the strongest extinction
+	# trace to NeuralBrain, and that negative focus is not executed by the resolver.
+	var positive = {}
+	var positive_score = 0.0
+	var experiment = {}
+	var experiment_score = 0.0
+	var negative = {}
+	var negative_score = 0.0
 	for candidate in candidates:
-		var evidence = maxf(float(candidate.learned_food_access), float(candidate.substrate_affordance))
-		if evidence > best_evidence:
-			best_evidence = evidence
-			best = candidate
-	if not best.is_empty() and best_evidence > 0.01:
-		return best
-	var best_distance = INF
-	for candidate in candidates:
-		if not bool(candidate.classic):
-			continue
-		if float(candidate.distance) < best_distance:
-			best_distance = float(candidate.distance)
-			best = candidate
-	return best
+		var signed_food = float(candidate.learned_food_signed)
+		if signed_food > positive_score:
+			positive_score = signed_food
+			positive = candidate
+		var epistemic = float(candidate.experiment_evidence)
+		if epistemic > experiment_score:
+			experiment_score = epistemic
+			experiment = candidate
+		if signed_food < negative_score:
+			negative_score = signed_food
+			negative = candidate
+
+	if positive_score > POSITIVE_FOOD_THRESHOLD:
+		var selected_positive = positive.duplicate(true)
+		selected_positive["focus_mode"] = "learned_positive"
+		return selected_positive
+	if experiment_score > EXPERIMENT_THRESHOLD:
+		var selected_experiment = experiment.duplicate(true)
+		selected_experiment["focus_mode"] = "experiment"
+		return selected_experiment
+	if negative_score < EXTINCTION_THRESHOLD:
+		var selected_negative = negative.duplicate(true)
+		selected_negative["focus_mode"] = "extinction"
+		return selected_negative
+	return {}
+
+func neural_affordance_inputs(agent) -> Dictionary:
+	# 0.5 is the neutral point for the signed learned-food transport channel.
+	var result = {"learned_food_access": 0.5, "substrate_affordance": 0.0}
+	var focus = focused_manipulation_candidate(agent)
+	if focus.is_empty():
+		return result
+	result.learned_food_access = clampf(float(focus.learned_food_access), 0.0, 1.0)
+	var mode = str(focus.get("focus_mode", ""))
+	if mode != "extinction":
+		# Keep the physical affordance and its uncertainty conceptually separate;
+		# only their product is transported as the current substrate experiment opportunity.
+		result.substrate_affordance = clampf(float(focus.substrate_experiment), 0.0, 1.0)
+	return result
+
+func resolve_manipulation(agent) -> Dictionary:
+	var focus = focused_manipulation_candidate(agent)
+	if focus.is_empty():
+		return {}
+	var mode = str(focus.get("focus_mode", ""))
+	if mode in ["learned_positive", "experiment"]:
+		return focus
+	# Extinction is neural inhibitory evidence, never a command to repeat the action.
+	return {}
 
 func nearest_visible_with_cue(agent, cue_name: String) -> String:
-	# Pick the observation that contributed the strongest sensory affordance to
-	# the corresponding scalar NB input. This recovers object identity after the
-	# current v0.2.6 max-pooling perception without introducing utility scores.
 	var best_id = ""
 	var best_signal = -1.0
 	var best_distance = INF
