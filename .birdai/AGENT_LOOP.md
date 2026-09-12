@@ -7,15 +7,15 @@ are engineering work, not evidence for a biological claim.
 ## State machine
 Preferred GitHub labels:
 
-- `agent:ready` - eligible for Gemma
+- `agent:ready` — eligible for Gemma
 - `agent:working` - exactly one issue AND one execution slice repository-wide may have this state
-- `agent:blocked` - requires human/reviewer/research intervention
-- `review:needed` - PR exists and implementation must stop
-- `review:changes-requested` - Gemma may modify only the same PR/issue
-- `review:approved` - implementation accepted; merge still follows governance
-- `research-needed` - evidence review required
-- `architecture` - architecture decision required
-- `phase:E0`, `phase:P1`, etc. - roadmap scope
+- `agent:blocked` — requires human/reviewer/research intervention
+- `review:needed` — PR exists and implementation must stop
+- `review:changes-requested` — Gemma may modify only the same PR/issue
+- `review:approved` — implementation accepted; merge still follows governance
+- `research-needed` — evidence review required
+- `architecture` — architecture decision required
+- `phase:E0`, `phase:P1`, etc. — roadmap scope
 
 Until repository labels are provisioned, the same states may be represented by an explicit `STATE:` line in the issue body.
 

@@ -29,7 +29,7 @@ assignees: ""
 <!-- Exact commands/tests. -->
 
 ## Current execution slice
-<!-- Issue != execution slice. Prepare only one current delm�l using
+<!-- Issue != execution slice. Prepare only one current delmål using
 .birdai/execution-slice.template.json and .birdai/New-ExecutionSlice.ps1.
 Record EXECUTION_SLICE: <id> and STATE: <state>; only one slice repository-wide
 may be agent:working. Follow .birdai/AGENT_LOOP.md for budgets and evidence.
