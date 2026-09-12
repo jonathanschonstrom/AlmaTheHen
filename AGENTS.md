@@ -15,6 +15,8 @@ A lower authority may not silently override a higher one.
 Develop BirdAI toward an increasingly adaptive, biologically plausible artificial avian brain while keeping behavioral acceptance, biological plausibility, regression safety, and experimental evidence separate.
 
 ## Work rules
+- Follow `.birdai/AGENT_LOOP.md`: every execution requires one bounded slice in `AI_TASK.json`; an issue is not an execution slice.
+- Only one execution slice across the repository may be `agent:working`, within the one active issue. Preserve attempt counts across handoffs.
 - Work on exactly one issue marked `agent:ready` at a time.
 - The issue defines the allowed scope. Do not perform unrelated cleanup or opportunistic refactors.
 - Use a dedicated branch for the issue. Never work directly on `main`.
