@@ -1,0 +1,73 @@
+version: 1
+current:
+  milestone: E0
+  objective: persistent_individual
+
+milestones:
+  E0:
+    title: Persistent individual
+    status: active
+    depends_on: []
+    completion:
+      - canonical_user_data_path
+      - same_individual_id_across_restart_and_upgrade
+      - memory_persists
+      - learning_persists
+      - personality_relationship_persist
+      - body_world_state_persist_per_contract
+      - working_memory_does_not_restore
+      - legacy_res_data_migration_is_defensive_and_non_destructive
+      - primary_backup_migration_failure_paths_tested
+      - no_silent_data_loss
+  P1:
+    title: Verified neural baseline
+    status: locked
+    depends_on: [E0]
+  E1:
+    title: Experiment environment
+    status: locked
+    depends_on: [P1]
+  P1_5:
+    title: Object and Primitive Selection
+    status: locked
+    depends_on: [E1]
+  P2:
+    title: Spatial hippocampus/context
+    status: locked
+    depends_on: [P1_5]
+  P3:
+    title: Outcome learning and dopamine-modulated plasticity
+    status: locked
+    depends_on: [P2]
+  P3_5:
+    title: Neural working memory / NCL goal maintenance
+    status: locked
+    depends_on: [P3]
+  P4:
+    title: Richer social representation
+    status: locked
+    depends_on: [P3_5]
+  P5:
+    title: Sleep/rest as real recovery
+    status: locked
+    depends_on: [P4]
+  P6:
+    title: Decomposed threat system
+    status: locked
+    depends_on: [P5]
+  P7:
+    title: Reproduction and genetics
+    status: locked
+    depends_on: [P6]
+
+experiment_gate:
+  - research_claim
+  - architecture_hypothesis
+  - implementation
+  - controlled_experiment
+  - metrics
+  - control_or_ablation
+  - regression
+  - behavioral_assessment
+  - biological_plausibility_assessment
+  - accepted_baseline_or_rejected_candidate
