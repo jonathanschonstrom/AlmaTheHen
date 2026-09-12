@@ -12,6 +12,19 @@ Read AGENTS.md and its authority chain, .birdai/AGENT_LOOP.md, the parent issue 
 current AI_TASK.json. Load only relevant neuroscience claims/ADRs and source/tests.
 Do not duplicate the full phase specification in the task.
 
+If the working branch predates governance, fetch once and record the commit behind
+origin/main. Read missing authority files with `git show <recorded-commit>:<path>`;
+do not merge/rebase main or copy governance into an active product branch merely
+to read it. Resolve referenced loop/template/schema files from the same recorded
+tooling revision when absent locally. Before merge, an explicitly supplied PR
+revision is usable for read-only handoff inspection; it does not authorize product
+execution or override main's governance. Report unavailable references as BLOCKED.
+
+Before dispatch, compare local AI_TASK.json and AI_RESULT.json IDs and attempt
+counts with the assigned remote task. A stale local task and a newer blocked
+result must be reconciled by the coordinator before execution. Do not restore an
+older task, discard the result or reset its budget automatically.
+
 Confirm one slice is agent:working, with this ID, on the assigned branch. Preserve
 the attempt ledger and untracked implementation tests. Ambiguous ownership, stale
 or incompatible task formats and exhausted budgets mean BLOCKED; do not silently
