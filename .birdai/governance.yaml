@@ -1,0 +1,54 @@
+version: 1
+project:
+  name: BirdAI
+  objective: >-
+    Develop BirdAI toward an increasingly adaptive and biologically plausible
+    artificial avian brain without sacrificing regression safety or experimental traceability.
+
+authority_order:
+  - .birdai/governance.yaml
+  - .birdai/roadmap.yaml
+  - BIRDAI-NEUROSCIENCE-REFERENCE.md
+  - .birdai/adr
+  - github_issue
+
+current_phase: E0
+
+hard_rules:
+  - do_not_skip_roadmap_phases
+  - do_not_change_biology_to_make_tests_pass
+  - do_not_expand_scope_without_new_issue
+  - do_not_accept_behavior_only_as_evidence
+  - do_not_merge_failed_required_regressions
+  - preserve_neural_decision_authority
+  - utility_must_not_become_hidden_control_fallback
+  - classify_unbacked_neural_mechanisms_as_D_level
+  - one_agent_issue_at_a_time
+  - implementing_agent_must_not_self_merge
+
+review_required_questions:
+  - solves_exact_issue
+  - consistent_with_current_phase
+  - preserves_architecture_decisions
+  - no_unjustified_biological_change
+  - no_hidden_cognitive_transfer_to_godot
+  - no_test_driven_policy_tuning
+  - required_regressions_pass
+  - experiment_or_ablation_requirement_satisfied
+  - no_unrelated_diff
+
+human_approval_required_for:
+  - new_neural_architecture
+  - action_value_or_policy_change
+  - commitment_rule_change
+  - new_learning_system
+  - decision_authority_change
+  - roadmap_phase_change
+  - accepted_neural_baseline_change
+
+stop_conditions:
+  - authority_conflict
+  - scope_expansion_required
+  - unrelated_baseline_failure
+  - protected_architecture_change_required
+  - insufficient_evidence_for_required_biological_claim
