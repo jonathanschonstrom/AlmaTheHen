@@ -1,104 +1,72 @@
 {
-  "protocol_version": "1.2",
-  "task_id": "e0-persistence-tests-001",
+  "protocol_version": "1.3",
+  "task_id": "e0-sandbox-startup-001",
   "status": "ready",
-  "objective": "Create a real isolated regression test suite for E0 Persistent Individual migration. Do not modify the persistence implementation in this task. Implement tests/test_persistence_migration.gd with no placeholders. The suite must verify: (1) default destination resolves to user://alma/individual.json, (2) explicit save_path bypasses automatic migration, (3) save/load preserves individual_id, (4) memory objects/episodes/total_episodes persist, (5) working memory is not restored, (6) learning models/contexts/skills/flight persist, (7) valid legacy primary migrates, (8) corrupt legacy primary plus valid legacy .bak migrates, (9) valid user primary wins over legacy, (10) corrupt user primary plus valid user .bak wins over legacy, (11) legacy original remains unchanged after migration, (12) migrated data preserves individual_id and central agent/world state, (13) existing user .bak recovery still works, and (14) explicit test paths never write to the real user://alma location. Migration cases MUST run in an isolated temporary Godot project outside the tracked working tree. The test harness may create temporary runtime files and directories outside the repository, including a sandbox project.godot, sandbox data/individual.json fixtures and sandbox user-data files. These runtime artifacts are expressly permitted and do NOT count as tracked source modifications. The tracked project.godot, tracked scripts/persistence.gd, tracked VERSION.txt and all other forbidden files remain read-only. The sandbox project must use a unique application name/user-data namespace, launch a child Godot process with --path pointing to the sandbox, print/assert OS.get_user_data_dir() and ProjectSettings.globalize_path(\"user://alma/individual.json\"), and fail before persistence execution if that path equals or falls under the real BirdAI user-data path. Temporary sandbox files/directories must be cleaned after the suite. If that path separation cannot be proven, stop and report BLOCKED.",
+  "parent_task": "e0-persistence-tests-001",
+  "objective": "Repair and validate only the isolated Godot sandbox/child-process startup path. Preserve the existing persistence test work. Do not validate migration scenarios yet. The slice is complete when the outer harness can create the sandbox outside the git worktree, launch a child Godot process, have the child print its OS.get_user_data_dir() and globalized user://alma/individual.json, prove that path is distinct from the real BirdAI/Alma user-data path, exit with code 0, and clean up the sandbox.",
+  "current_step_only": true,
   "allowed_files": [
     "tests/test_persistence_migration.gd",
     "AI_RESULT.json"
   ],
-  "allowed_files_semantics": "This list restricts TRACKED repository modifications only. Temporary runtime files outside the git working tree are permitted when created solely for the isolated sandbox test and cleaned afterward.",
-  "temporary_runtime_exception": {
-    "permitted": true,
-    "must_be_outside_git_worktree": true,
-    "must_be_cleaned": true,
-    "permitted_examples": [
-      "temporary sandbox project.godot",
-      "temporary sandbox data/individual.json",
-      "temporary sandbox data/individual.json.bak",
-      "temporary sandbox user:// files",
-      "temporary helper script copied/generated inside sandbox if required"
-    ],
-    "forbidden": [
-      "writing any fixture into the real repository data/ directory",
-      "writing to the real BirdAI/Alma user-data directory",
-      "modifying tracked project.godot",
-      "modifying tracked scripts/persistence.gd"
-    ]
+  "preserve_existing_work": true,
+  "do_not_do": [
+    "Do not modify scripts/persistence.gd or any implementation file.",
+    "Do not implement, debug, or run migration scenarios 1-14 in this slice.",
+    "Do not rewrite the test suite from scratch.",
+    "Do not change tracked project.godot.",
+    "Do not commit or push until the slice validation passes."
+  ],
+  "runtime": {
+    "godot_console": "C:\\BirdAI\\tools\\Godot_console.exe",
+    "sandbox_must_be_outside_git_worktree": true,
+    "sandbox_project_must_use_unique_user_data_namespace": true,
+    "real_alma_user_data_must_not_be_written": true
   },
-  "read_only_files": [
-    "scripts/persistence.gd",
-    "scripts/cognition/agent.gd",
-    "scripts/cognition/memory.gd",
-    "scripts/cognition/learning.gd",
-    "scripts/world/world_state.gd",
-    "project.godot",
-    "Kor tester.cmd"
+  "required_harness_output": [
+    "[HARNESS] sandbox=<path>",
+    "[CHILD] user_data_dir=<path>",
+    "[CHILD] alma_save=<path>",
+    "[ISOLATION] PASS",
+    "[CLEANUP] PASS",
+    "[HARNESS] PASS"
   ],
-  "forbidden_files": [
-    "scripts/persistence.gd",
-    "scripts/cognition/agent.gd",
-    "scripts/view/inspector.gd",
-    "scripts/cognition/neural_brain_bridge.gd",
-    "brain/",
-    "project.godot",
-    "VERSION.txt"
-  ],
-  "required_isolation_design": [
-    "Outer harness runs from the real repository but must not instantiate default-path persistence for migration cases.",
-    "Create a temporary project directory outside the git working tree.",
-    "Copy only the minimum files needed for the child test into the sandbox.",
-    "Modify only the sandbox copy of project.godot to use a unique application/config/name. Optionally set a unique custom_user_dir_name in the sandbox copy for extra separation.",
-    "Create res://data/individual.json and .bak fixtures only inside the sandbox when required.",
-    "Launch the resolved Godot console binary with --headless --path <sandbox> to execute migration cases.",
-    "Child must print/assert OS.get_user_data_dir() and globalized user://alma/individual.json before persistence execution.",
-    "Fail immediately if sandbox user-data path equals or is inside the real BirdAI/Alma user-data path.",
-    "Clean sandbox project and sandbox user-data namespace after each case or after the suite."
-  ],
-  "validation_runtime": {
-    "godot_console_resolution_order": [
-      "C:\\BirdAI\\tools\\Godot_console.exe",
-      "tools\\Godot_console.exe",
-      "Godot_console.exe available on PATH"
-    ],
-    "resolution_rule": "Use the first existing/launchable candidate. Do not retry path spelling or slash variants after two failed checks. Report the exact resolved executable path in AI_RESULT.json. If none exists, report BLOCKED.",
-    "selected_binary_must_be_reported": true
+  "execution_rule": {
+    "maximum_godot_runs": 2,
+    "first_failed_run": "Inspect and report the exact stdout/stderr and identify one concrete harness defect. One targeted harness correction is permitted.",
+    "second_failed_run": "STOP. Mark BLOCKED. Do not edit or run again.",
+    "timeout_is_failure": true,
+    "no_equivalent_retry_variants": true
   },
   "validation_commands": [
     "git diff --check",
-    "<resolved Godot console binary> --headless --path . --script res://tests/test_persistence_migration.gd"
+    "C:\\BirdAI\\tools\\Godot_console.exe --headless --path . --script res://tests/test_persistence_migration.gd -- --harness-only"
   ],
-  "stop_conditions": [
-    "Current branch is not bionic/persistent-individual",
-    "Any tracked modified or untracked repository file exists outside allowed_files except pre-existing local .night_shift infrastructure",
-    "Any attempted tracked repository write targets a path outside allowed_files",
-    "The sandbox cannot prove its user-data path is distinct from the real BirdAI/Alma user-data path",
-    "No permitted Godot console binary can be resolved from validation_runtime",
-    "Any persistence migration test fails",
-    "Any Godot parse/runtime error occurs",
-    "The task would require modifying scripts/persistence.gd, tracked project.godot, VERSION.txt or any other implementation file"
+  "acceptance": [
+    "Child Godot process exits 0.",
+    "No persistence migration scenario is executed.",
+    "Sandbox user-data path is printed and proven distinct from the real BirdAI/Alma user-data path before any persistence code can write.",
+    "Sandbox cleanup succeeds.",
+    "git diff --check passes."
   ],
   "result_requirements": {
     "required_fields": [
       "protocol_version",
       "task_id",
       "status",
+      "godot_runs_used",
       "changed_files",
       "validation_results",
+      "isolation_evidence",
       "git_diff_check",
       "git_status",
       "summary",
       "blockers",
-      "commit_sha",
-      "resolved_godot_console"
+      "commit_sha"
     ],
-    "raw_evidence_required": true,
-    "must_include_isolation_evidence": [
-      "real user-data path used for comparison",
-      "sandbox OS.get_user_data_dir()",
-      "sandbox globalized user://alma/individual.json",
-      "proof that the sandbox path is distinct from the real BirdAI/Alma path",
-      "sandbox cleanup result"
+    "status_values": [
+      "success",
+      "blocked"
     ]
   }
 }
