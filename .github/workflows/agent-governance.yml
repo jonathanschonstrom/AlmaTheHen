@@ -19,6 +19,6 @@ jobs:
       - name: Install test dependency
         run: python -m pip install --disable-pip-version-check pytest
       - name: Governance static checks
-        run: python -m pytest -q tests/test_governance_static.py
+        run: python -m pytest -q tests/test_governance_static.py tests/test_execution_slices.py
       - name: Neural control static regression
         run: python tests/test_neural_control_static.py

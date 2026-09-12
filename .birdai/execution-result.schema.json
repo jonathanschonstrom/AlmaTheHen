@@ -1,0 +1,373 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BirdAI execution result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "slice_id",
+    "status",
+    "base_commit",
+    "elapsed_seconds",
+    "diagnosis",
+    "attempts",
+    "runs",
+    "cleanup",
+    "changed_files",
+    "pass_evidence",
+    "stop_reason"
+  ],
+  "properties": {
+    "slice_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "enum": [
+        "PASS",
+        "BLOCKED"
+      ]
+    },
+    "base_commit": {
+      "type": "string"
+    },
+    "elapsed_seconds": {
+      "type": "number",
+      "minimum": 0
+    },
+    "diagnosis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "observed_failure",
+        "likely_location",
+        "hypothesis",
+        "minimal_test"
+      ],
+      "properties": {
+        "observed_failure": {
+          "type": "string"
+        },
+        "likely_location": {
+          "type": "string"
+        },
+        "hypothesis": {
+          "type": "string"
+        },
+        "minimal_test": {
+          "type": "string"
+        }
+      }
+    },
+    "attempts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "diagnostic_runs",
+        "validation_runs",
+        "strategies"
+      ],
+      "properties": {
+        "diagnostic_runs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "validation_runs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "strategies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "operation",
+              "uses",
+              "outcomes"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "operation": {
+                "type": "string"
+              },
+              "uses": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2
+              },
+              "outcomes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "runs": {
+      "type": "array",
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "scenario_id",
+          "command",
+          "cwd",
+          "version",
+          "seed",
+          "timeout_seconds",
+          "elapsed_seconds",
+          "parent",
+          "children",
+          "timed_out",
+          "forced_termination",
+          "last_passed_step",
+          "failed_step",
+          "stdout",
+          "stderr"
+        ],
+        "properties": {
+          "scenario_id": {
+            "type": "string"
+          },
+          "command": {
+            "type": "string"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "seed": {
+            "type": [
+              "string",
+              "integer",
+              "null"
+            ]
+          },
+          "timeout_seconds": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "elapsed_seconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "parent": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "pid",
+              "start_utc",
+              "exit_code"
+            ],
+            "properties": {
+              "pid": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "start_utc": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "exit_code": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            }
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "pid",
+                "start_utc",
+                "exit_code"
+              ],
+              "properties": {
+                "pid": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "start_utc": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "exit_code": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              }
+            }
+          },
+          "timed_out": {
+            "type": "boolean"
+          },
+          "forced_termination": {
+            "type": "boolean"
+          },
+          "last_passed_step": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "failed_step": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "stdout": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "sha256"
+            ],
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          },
+          "stderr": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "sha256"
+            ],
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    "cleanup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "paths",
+        "details"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "not_applicable"
+          ]
+        },
+        "paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "details": {
+          "type": "string"
+        }
+      }
+    },
+    "changed_files": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "pass_evidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "stop_reason": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "PASS"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "runs": {
+            "minItems": 1,
+            "items": {
+              "properties": {
+                "timed_out": {
+                  "const": false
+                },
+                "forced_termination": {
+                  "const": false
+                },
+                "parent": {
+                  "properties": {
+                    "exit_code": {
+                      "const": 0
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "cleanup": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "PASS",
+                  "not_applicable"
+                ]
+              }
+            }
+          },
+          "pass_evidence": {
+            "minItems": 1
+          }
+        }
+      }
+    }
+  ]
+}

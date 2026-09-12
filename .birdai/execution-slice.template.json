@@ -1,0 +1,16 @@
+{
+  "goal": {"slice_id": "", "issue": "", "objective": "", "pass_definition": ""},
+  "allowed_files": [],
+  "validation": {"shell": "PowerShell", "command": "", "timeout_seconds": 20, "timeout_reason": ""},
+  "max_attempts": {"diagnostic_runs": 1, "validation_runs": 1, "same_strategy_uses": 2},
+  "stop_conditions": [
+    "pass_definition_proven",
+    "second_run_failed_timed_out_or_inconclusive",
+    "strategy_budget_exhausted",
+    "authority_or_scope_conflict",
+    "unrelated_baseline_failure",
+    "deadline_enforcement_unavailable",
+    "cleanup_or_process_termination_unconfirmed"
+  ],
+  "result_schema": ".birdai/execution-result.schema.json"
+}

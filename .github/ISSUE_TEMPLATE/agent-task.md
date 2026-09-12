@@ -28,6 +28,13 @@ assignees: ""
 ## Required tests
 <!-- Exact commands/tests. -->
 
+## Current execution slice
+<!-- Issue != execution slice. Prepare only one current delm�l using
+.birdai/execution-slice.template.json and .birdai/New-ExecutionSlice.ps1.
+Record EXECUTION_SLICE: <id> and STATE: <state>; only one slice repository-wide
+may be agent:working. Follow .birdai/AGENT_LOOP.md for budgets and evidence.
+Keep the phase specification here/by reference, not in every AI_TASK.json. -->
+
 ## Stop conditions
 Stop and report `BLOCKED` if the task requires scope expansion, conflicts with governance/roadmap/reference/ADR, or exposes an unrelated baseline failure.
 
