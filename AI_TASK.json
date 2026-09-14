@@ -1,9 +1,11 @@
 {
-  "protocol_version": "1.3",
-  "task_id": "e0-sandbox-startup-001",
+  "protocol_version": "1.4",
+  "task_id": "e0-sandbox-startup-002",
   "status": "ready",
   "parent_task": "e0-persistence-tests-001",
-  "objective": "Repair and validate only the isolated Godot sandbox/child-process startup path. Preserve the existing persistence test work. Do not validate migration scenarios yet. The slice is complete when the outer harness can create the sandbox outside the git worktree, launch a child Godot process, have the child print its OS.get_user_data_dir() and globalized user://alma/individual.json, prove that path is distinct from the real BirdAI/Alma user-data path, exit with code 0, and clean up the sandbox.",
+  "supersedes": "e0-sandbox-startup-001",
+  "resume_reason": "Previous slice was BLOCKED only because Bionic could not access C:\\BirdAI\\tools\\Godot_console.exe. Environment-unblock verification now confirms the executable exists, is readable/executable, and reports Godot Engine v4.7.2.stable.official.ed1daf0bf. Coordinator authorizes a fresh bounded validation budget based on this new evidence.",
+  "objective": "Validate only the isolated Godot sandbox/child-process startup path. Preserve the existing local persistence migration test work. Do not run migration scenarios 1-14.",
   "current_step_only": true,
   "allowed_files": [
     "tests/test_persistence_migration.gd",
@@ -13,15 +15,20 @@
   "do_not_do": [
     "Do not modify scripts/persistence.gd or any implementation file.",
     "Do not implement, debug, or run migration scenarios 1-14 in this slice.",
-    "Do not rewrite the test suite from scratch.",
-    "Do not change tracked project.godot.",
-    "Do not commit or push until the slice validation passes."
+    "Do not rewrite tests/test_persistence_migration.gd from scratch.",
+    "Do not change tracked project.godot or VERSION.txt.",
+    "Do not touch neural or behavior files.",
+    "Do not merge or rebase main into this branch.",
+    "Do not refactor OS.execute to OS.create_process unless the validation proves a concrete startup defect that requires that exact minimal correction.",
+    "Do not commit or push until slice validation passes."
   ],
   "runtime": {
     "godot_console": "C:\\BirdAI\\tools\\Godot_console.exe",
+    "godot_version_verified": "4.7.2.stable.official.ed1daf0bf",
     "sandbox_must_be_outside_git_worktree": true,
     "sandbox_project_must_use_unique_user_data_namespace": true,
-    "real_alma_user_data_must_not_be_written": true
+    "real_alma_user_data_must_not_be_written": true,
+    "validation_deadline_seconds": 20
   },
   "required_harness_output": [
     "[HARNESS] sandbox=<path>",
@@ -33,10 +40,11 @@
   ],
   "execution_rule": {
     "maximum_godot_runs": 2,
-    "first_failed_run": "Inspect and report the exact stdout/stderr and identify one concrete harness defect. One targeted harness correction is permitted.",
+    "first_failed_run": "Inspect exact stdout/stderr, record observed failure -> likely location -> one concrete hypothesis -> minimal correction. At most one targeted harness correction is permitted.",
     "second_failed_run": "STOP. Mark BLOCKED. Do not edit or run again.",
     "timeout_is_failure": true,
-    "no_equivalent_retry_variants": true
+    "no_equivalent_retry_variants": true,
+    "prior_slice_attempts_do_not_count": "Fresh budget is explicitly authorized because the prior blocker was external environment access and is now resolved."
   },
   "validation_commands": [
     "git diff --check",
@@ -44,9 +52,11 @@
   ],
   "acceptance": [
     "Child Godot process exits 0.",
-    "No persistence migration scenario is executed.",
-    "Sandbox user-data path is printed and proven distinct from the real BirdAI/Alma user-data path before any persistence code can write.",
+    "No persistence migration scenario executes.",
+    "Child prints OS.get_user_data_dir() and globalized user://alma/individual.json.",
+    "Sandbox user-data/save path is proven distinct from the real BirdAI/Alma user-data path before persistence can write.",
     "Sandbox cleanup succeeds.",
+    "Parent validation command returns naturally within the enforced deadline.",
     "git diff --check passes."
   ],
   "result_requirements": {
