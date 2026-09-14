@@ -1,12 +1,12 @@
 version: 1
 current:
-  milestone: E0
-  objective: persistent_individual
+  milestone: P1
+  objective: verified_neural_baseline
 
 milestones:
   E0:
     title: Persistent individual
-    status: active
+    status: complete
     depends_on: []
     completion:
       - canonical_user_data_path
@@ -21,7 +21,7 @@ milestones:
       - no_silent_data_loss
   P1:
     title: Verified neural baseline
-    status: locked
+    status: active
     depends_on: [E0]
   E1:
     title: Experiment environment
