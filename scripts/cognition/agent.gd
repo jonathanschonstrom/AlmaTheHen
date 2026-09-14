@@ -498,6 +498,7 @@ func export_data() -> Dictionary:
 func restore(data: Dictionary) -> void:
 	individual_id = data.get("individual_id", individual_id)
 	bird_name = data.get("name", "Alma")
+	hen_share = float(data.get("hen_share", hen_share))
 	age = float(data.get("age", 0))
 	position = unvec(data.get("position", [0, 0, 0]))
 	support_id = data.get("support_id", "")

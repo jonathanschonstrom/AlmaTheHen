@@ -1,50 +1,48 @@
 {
-    "slice_id":  "e0-pr9-evidence-repair-002",
+    "slice_id":  "e0-hen-share-continuity-001",
     "status":  "PASS",
-    "base_commit":  "302b09d0a7e5b4291e8d3947b2364963d2f56809",
-    "elapsed_seconds":  0.595,
+    "base_commit":  "fea6d7be9745076060f966aec18765db0e6f2339",
+    "elapsed_seconds":  0.568,
     "diagnosis":  {
-                      "observed_failure":  "Previous review-repair attempt used an incorrect two-dot tree comparison against origin/main and a 180-second timeout, so it blocked after a successful test run.",
-                      "likely_location":  "Review/evidence tooling only; persistence implementation and regression suite were already passing.",
-                      "hypothesis":  "Using the PR merge-base for scope and the repository-standard 20-second bounded validation will produce valid review evidence without feature-code changes.",
-                      "minimal_test":  "Run the existing isolated 14-scenario Godot suite once with a 20-second wall-clock deadline while recording process, observability, stdout, stderr, cleanup, and hashes."
+                      "observed_failure":  "Agent.export_data persisted hen_share, but Agent.restore omitted it, silently losing the exported field after restart.",
+                      "likely_location":  "scripts/cognition/agent.gd Agent.restore",
+                      "hypothesis":  "Restoring hen_share with a default-preserving data.get call closes the continuity gap without changing legacy-save behavior or decision policy.",
+                      "minimal_test":  "Set hen_share to a non-default value in persistence scenario 12, save/load through the existing isolated harness, and assert the restored value while rerunning all 14 scenarios."
                   },
     "attempts":  {
                      "diagnostic_runs":  0,
                      "validation_runs":  1,
                      "strategies":  [
                                         {
-                                            "id":  "merge-base-bounded-evidence",
-                                            "operation":  "Validate existing issue #6 implementation under 20-second runner and finalize PR scope from merge-base.",
+                                            "id":  "restore-exported-hen-share",
+                                            "operation":  "Add default-preserving hen_share restore and one round-trip regression assertion.",
                                             "uses":  1,
                                             "outcomes":  [
                                                              "14/14 persistence scenarios passed",
-                                                             "isolation passed",
-                                                             "parent and child exited naturally with code 0",
-                                                             "sandbox and child user-data paths were removed",
-                                                             "raw stdout/stderr and observability log were hashed"
+                                                             "scenario 12 preserved hen_share",
+                                                             "isolation and cleanup passed"
                                                          ]
                                         }
                                     ]
                  },
     "runs":  [
                  {
-                     "scenario_id":  "e0-persistence-suite",
+                     "scenario_id":  "hen-share-continuity",
                      "command":  "tools/Godot_console.exe --headless --path . --script res://tests/test_persistence_migration.gd",
                      "cwd":  "C:\\AlmaTheHen",
                      "version":  "4.7.2.stable.official.ed1daf0bf - https://godotengine.org",
                      "seed":  null,
                      "timeout_seconds":  20,
-                     "elapsed_seconds":  0.595,
+                     "elapsed_seconds":  0.568,
                      "parent":  {
-                                    "pid":  43736,
-                                    "start_utc":  "2026-09-14T20:48:24.4897444Z",
+                                    "pid":  45784,
+                                    "start_utc":  "2026-09-14T21:30:01.7488231Z",
                                     "exit_code":  0
                                 },
                      "children":  [
                                       {
-                                          "pid":  2728,
-                                          "start_utc":  "2026-09-14T20:48:24.4988570Z",
+                                          "pid":  36288,
+                                          "start_utc":  "2026-09-14T21:30:01.7582380Z",
                                           "exit_code":  0
                                       }
                                   ],
@@ -53,11 +51,11 @@
                      "last_passed_step":  "[HARNESS] PASS",
                      "failed_step":  null,
                      "stdout":  {
-                                    "path":  "C:\\BirdAI_E0_evidence\\issue6-revision2-20260914T204824Z\\godot.stdout.txt",
-                                    "sha256":  "9e4eda3d84ebdacf042ee333af4831529f78c22f77d4e1d56923a239ffd2bcc4"
+                                    "path":  "C:\\BirdAI_E0_evidence\\e0-hen-share-20260914T213001Z\\godot.stdout.txt",
+                                    "sha256":  "a853d50c2283209565ba437b532271e268add3c398a55283ef6af8700b017d89"
                                 },
                      "stderr":  {
-                                    "path":  "C:\\BirdAI_E0_evidence\\issue6-revision2-20260914T204824Z\\godot.stderr.txt",
+                                    "path":  "C:\\BirdAI_E0_evidence\\e0-hen-share-20260914T213001Z\\godot.stderr.txt",
                                     "sha256":  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
                                 }
                  }
@@ -65,24 +63,24 @@
     "cleanup":  {
                     "status":  "PASS",
                     "paths":  [
-                                  "C:/Users/jonat/AppData/Local/Temp/birdai-e0-persistence-1789418904.619-102020",
-                                  "C:/Users/jonat/AppData/Roaming/birdai-e0-persistence-1789418904.619-102020"
+                                  "C:/Users/jonat/AppData/Local/Temp/birdai-e0-persistence-1789421401.878-103269",
+                                  "C:/Users/jonat/AppData/Roaming/birdai-e0-persistence-1789421401.878-103269"
                               ],
-                    "details":  "Harness reported cleanup PASS and the runner confirmed the observed sandbox and child user-data paths no longer existed after natural process exit."
+                    "details":  "Harness reported cleanup PASS and observed sandbox/user-data paths were absent after natural process exit."
                 },
     "changed_files":  [
-                          "AI_TASK.json",
+                          "scripts/cognition/agent.gd",
+                          "tests/test_persistence_migration.gd",
                           "AI_RESULT.json"
                       ],
     "pass_evidence":  [
-                          "Godot isolated persistence suite: 14/14 scenario markers present.",
-                          "[ISOLATION] PASS, [CLEANUP] PASS and [HARNESS] PASS present in raw stdout.",
-                          "Validated test blob remained b3bfdb68c55f623ea266267e9c3199421ec29827.",
-                          "Parent PID 43736 exited 0 within 20 seconds.",
-                          "Child process evidence recorded with natural exit code 0.",
-                          "stdout: C:\\BirdAI_E0_evidence\\issue6-revision2-20260914T204824Z\\godot.stdout.txt sha256=9e4eda3d84ebdacf042ee333af4831529f78c22f77d4e1d56923a239ffd2bcc4",
-                          "stderr: C:\\BirdAI_E0_evidence\\issue6-revision2-20260914T204824Z\\godot.stderr.txt sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-                          "observability: C:\\BirdAI_E0_evidence\\issue6-revision2-20260914T204824Z\\runner.observability.txt sha256=c9333da891b3460cd6d78e24dbc81a0c0725fd8298e855f560f79a1fcfa28e78"
+                          "Agent.restore now restores saved hen_share with default-preserving fallback.",
+                          "Scenario 12 sets hen_share=0.63 and asserts restored hen_share=0.63.",
+                          "Godot isolated persistence suite: 14/14 PASS.",
+                          "[ISOLATION] PASS, [CLEANUP] PASS, [HARNESS] PASS.",
+                          "stdout: C:\\BirdAI_E0_evidence\\e0-hen-share-20260914T213001Z\\godot.stdout.txt sha256=a853d50c2283209565ba437b532271e268add3c398a55283ef6af8700b017d89",
+                          "stderr: C:\\BirdAI_E0_evidence\\e0-hen-share-20260914T213001Z\\godot.stderr.txt sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                          "observability: C:\\BirdAI_E0_evidence\\e0-hen-share-20260914T213001Z\\runner.observability.txt sha256=e482b378f9b2735cc2b43932c1ef8ecbd8e1486a2c04b12e48eba206fdf01c81"
                       ],
-    "stop_reason":  "PASS criteria satisfied; finalize only the review/evidence correction and stop."
+    "stop_reason":  "PASS criteria satisfied; push one issue branch and open one PR for review, then stop."
 }
