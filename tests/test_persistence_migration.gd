@@ -391,6 +391,7 @@ func _scenario_12() -> bool:
 	var source_agent = _AgentScript.new(source_world, 1201)
 	source_agent.individual_id = "alma-central-s12"
 	source_agent.bird_name = "Alma Persist"
+	source_agent.hen_share = 0.63
 	source_agent.age = 321.25
 	source_agent.position = Vector3(1.25, 0.0, -0.75)
 	source_agent.relationship.trust = 0.77
@@ -409,6 +410,8 @@ func _scenario_12() -> bool:
 	if not _check(restored_agent.individual_id == "alma-central-s12", "Scenario 12: individual_id changed"):
 		return false
 	if not _check(restored_agent.bird_name == "Alma Persist", "Scenario 12: bird name changed"):
+		return false
+	if not _check(is_equal_approx(float(restored_agent.hen_share), 0.63), "Scenario 12: hen_share changed"):
 		return false
 	if not _check(is_equal_approx(restored_agent.age, 321.25), "Scenario 12: age changed"):
 		return false
