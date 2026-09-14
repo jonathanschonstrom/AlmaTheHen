@@ -1,80 +1,69 @@
 {
-  "protocol_version": "1.5",
-  "task_id": "e0-sandbox-startup-003",
+  "protocol_version": "1.6",
+  "task_id": "e0-godot-wrapper-launch-001",
   "status": "ready",
   "parent_task": "e0-persistence-tests-001",
-  "supersedes": "e0-sandbox-startup-002",
-  "resume_reason": "Previous slice was BLOCKED by Bionic access to C:\\BirdAI\\tools. Godot has now been copied into the Bionic workspace at C:\\AlmaTheHen\\tools, both Godot.exe and Godot_console.exe are present, tools is untracked/ignored, and a manual workspace-local version check returned 4.7.2.stable.official.ed1daf0bf. Coordinator authorizes a fresh bounded validation budget based on this new environment evidence.",
-  "objective": "Validate only the isolated Godot sandbox/child-process startup path using the workspace-local Godot runtime. Preserve the existing local persistence migration test work. Do not run migration scenarios 1-14.",
+  "supersedes": "e0-sandbox-startup-003",
+  "resume_reason": "Direct execution of .\\tools\\Godot_console.exe is denied by the Bionic shell even though the file exists, is readable, and the same executable was manually run from PowerShell with version 4.7.2.stable.official.ed1daf0bf. This slice isolates the Bionic top-level execution boundary before returning to the Godot harness.",
+  "objective": "Prove whether Bionic can launch the workspace-local Godot runtime as a child of PowerShell. Do not run the persistence harness or migration scenarios.",
   "current_step_only": true,
-  "allowed_files": [
-    "tests/test_persistence_migration.gd",
+  "allowed_tracked_files": [
     "AI_RESULT.json"
   ],
+  "allowed_untracked_runtime_file": "tools/bionic_godot_probe.ps1",
   "preserve_existing_work": true,
   "do_not_do": [
+    "Do not modify tests/test_persistence_migration.gd.",
     "Do not modify scripts/persistence.gd or any implementation file.",
-    "Do not implement, debug, or run migration scenarios 1-14 in this slice.",
-    "Do not rewrite tests/test_persistence_migration.gd from scratch.",
-    "Do not change tracked project.godot or VERSION.txt.",
-    "Do not touch neural or behavior files.",
-    "Do not merge or rebase main into this branch.",
-    "Do not use C:\\BirdAI\\tools or request broader filesystem access.",
-    "Do not refactor OS.execute to OS.create_process unless validation proves a concrete startup defect requiring that exact minimal correction.",
-    "Do not commit or push until slice validation passes."
+    "Do not run migration scenarios 1-14.",
+    "Do not run the sandbox harness in this slice.",
+    "Do not request broader filesystem access.",
+    "Do not use C:\\BirdAI\\tools.",
+    "Do not change Windows execution policy persistently.",
+    "Do not retry equivalent quoting/path variants."
   ],
   "runtime": {
-    "godot_console": ".\\tools\\Godot_console.exe",
-    "godot_version_verified": "4.7.2.stable.official.ed1daf0bf",
-    "godot_runtime_inside_bionic_workspace": true,
-    "sandbox_must_be_outside_git_worktree": true,
-    "sandbox_project_must_use_unique_user_data_namespace": true,
-    "real_alma_user_data_must_not_be_written": true,
-    "validation_deadline_seconds": 20
+    "godot_console": "C:\\AlmaTheHen\\tools\\Godot_console.exe",
+    "godot_version_expected": "4.7.2.stable.official.ed1daf0bf",
+    "probe_script": "C:\\AlmaTheHen\\tools\\bionic_godot_probe.ps1",
+    "deadline_seconds": 20
   },
-  "required_harness_output": [
-    "[HARNESS] sandbox=<path>",
-    "[CHILD] user_data_dir=<path>",
-    "[CHILD] alma_save=<path>",
-    "[ISOLATION] PASS",
-    "[CLEANUP] PASS",
-    "[HARNESS] PASS"
+  "probe_script_requirements": [
+    "Create only the untracked ignored tools/bionic_godot_probe.ps1 file.",
+    "The script must invoke $PSScriptRoot\\Godot_console.exe --version.",
+    "The script must print the child exit code and propagate that exit code as its own process exit code.",
+    "Do not add retries or fallback paths."
   ],
-  "execution_rule": {
-    "maximum_godot_runs": 2,
-    "first_failed_run": "Inspect exact stdout/stderr, record observed failure -> likely location -> one concrete hypothesis -> minimal correction. At most one targeted harness correction is permitted.",
-    "second_failed_run": "STOP. Mark BLOCKED. Do not edit or run again.",
-    "timeout_is_failure": true,
-    "no_equivalent_retry_variants": true,
-    "prior_slice_attempts_do_not_count": "Fresh budget is explicitly authorized because the previous blocker was external workspace access and the runtime is now available inside the Bionic workspace."
-  },
   "validation_commands": [
     "git diff --check",
-    ".\\tools\\Godot_console.exe --headless --path . --script res://tests/test_persistence_migration.gd -- --harness-only"
+    "powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\tools\\bionic_godot_probe.ps1"
   ],
+  "execution_rule": {
+    "maximum_probe_runs": 1,
+    "on_failure": "STOP and report BLOCKED with exact stdout/stderr/exit code. Do not try another shell, path, quoting form, or direct executable invocation.",
+    "timeout_is_failure": true
+  },
   "acceptance": [
-    "Child Godot process exits 0.",
-    "No persistence migration scenario executes.",
-    "Child prints OS.get_user_data_dir() and globalized user://alma/individual.json.",
-    "Sandbox user-data/save path is proven distinct from the real BirdAI/Alma user-data path before persistence can write.",
-    "Sandbox cleanup succeeds.",
-    "Parent validation command returns naturally within the enforced deadline.",
-    "git diff --check passes."
+    "PowerShell probe launches workspace-local Godot_console.exe.",
+    "Godot prints version 4.7.2.stable.official.ed1daf0bf.",
+    "Probe reports child exit code 0 and parent PowerShell exits 0 within 20 seconds.",
+    "No tracked file changes occur except AI_RESULT.json if written.",
+    "No persistence or sandbox test executes."
   ],
   "result_requirements": {
     "required_fields": [
       "protocol_version",
       "task_id",
       "status",
-      "godot_runs_used",
-      "changed_files",
-      "validation_results",
-      "isolation_evidence",
+      "probe_runs_used",
+      "stdout",
+      "stderr",
+      "exit_code",
+      "elapsed_seconds",
       "git_diff_check",
       "git_status",
       "summary",
-      "blockers",
-      "commit_sha"
+      "blockers"
     ],
     "status_values": [
       "success",
