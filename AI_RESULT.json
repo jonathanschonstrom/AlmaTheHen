@@ -1,16 +1,25 @@
-{
-  "protocol_version": "2.0",
-  "task_id": "e0-sandbox-startup-006",
-  "status": "success",
-  "godot_runs_used": 1,
-  "changed_files": [
-    "tests/test_persistence_migration.gd"
-  ],
-  "git_diff_check": "pass",
-  "validation_command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\tools\\bionic_harness_probe.ps1",
-  "validation_result": "pass",
-  "exit_code": 0,
-  "wrapper_marker": "[WRAPPER] child_exit=0",
-  "blockers": [],
-  "summary": "isolated E0 sandbox startup validated successfully"
+﻿{
+    "protocol_version":  "2.3",
+    "task_id":  "e0-sandbox-whitespace-finalize-003",
+    "mode":  "FINALIZE_ONLY",
+    "status":  "success",
+    "godot_runs_used":  1,
+    "changed_files":  [
+                          "tests/test_persistence_migration.gd",
+                          "AI_RESULT.json"
+                      ],
+    "committed_files":  [
+                            "tests/test_persistence_migration.gd",
+                            "AI_RESULT.json"
+                        ],
+    "git_diff_check":  "pass",
+    "validation_command":  "powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\tools\\bionic_harness_probe.ps1",
+    "validation_result":  "pass",
+    "validation_exit_code":  0,
+    "wrapper_marker":  "[WRAPPER] child_exit=0",
+    "validated_test_hash":  "5210fe147d0f814d2e24a7561a1b395dc3400fbf",
+    "blockers":  [
+
+                 ],
+    "summary":  "cleaned trailing whitespace, revalidated exact E0 sandbox test bytes, tracked and committed"
 }
