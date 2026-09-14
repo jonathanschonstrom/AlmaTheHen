@@ -1,11 +1,11 @@
 {
-  "protocol_version": "1.6",
-  "task_id": "e0-godot-wrapper-launch-001",
+  "protocol_version": "1.7",
+  "task_id": "e0-godot-wrapper-launch-002",
   "status": "ready",
   "parent_task": "e0-persistence-tests-001",
-  "supersedes": "e0-sandbox-startup-003",
-  "resume_reason": "Direct execution of .\\tools\\Godot_console.exe is denied by the Bionic shell even though the file exists, is readable, and the same executable was manually run from PowerShell with version 4.7.2.stable.official.ed1daf0bf. This slice isolates the Bionic top-level execution boundary before returning to the Godot harness.",
-  "objective": "Prove whether Bionic can launch the workspace-local Godot runtime as a child of PowerShell. Do not run the persistence harness or migration scenarios.",
+  "supersedes": "e0-godot-wrapper-launch-001",
+  "resume_reason": "The previous wrapper probe was invalidated by a workspace mismatch: Bionic was operating in C:\\Users\\jonat\\AlmaTheHen while the verified Godot runtime existed in C:\\AlmaTheHen. Bionic has now been recreated/repointed to the canonical workspace. It reports Get-Location = C:/AlmaTheHen, git HEAD = 6c67818, and Test-Path .\\tools\\Godot_console.exe = True. Coordinator authorizes one fresh wrapper probe because the prior BLOCKED result did not test the intended environment.",
+  "objective": "Prove that Bionic can launch the workspace-local Godot runtime as a child of PowerShell from the canonical C:\\AlmaTheHen workspace. Do not run the persistence harness or migration scenarios.",
   "current_step_only": true,
   "allowed_tracked_files": [
     "AI_RESULT.json"
@@ -19,17 +19,25 @@
     "Do not run the sandbox harness in this slice.",
     "Do not request broader filesystem access.",
     "Do not use C:\\BirdAI\\tools.",
+    "Do not use C:\\Users\\jonat\\AlmaTheHen.",
     "Do not change Windows execution policy persistently.",
     "Do not retry equivalent quoting/path variants."
   ],
   "runtime": {
+    "required_working_directory": "C:\\AlmaTheHen",
+    "required_starting_head": "6c67818",
     "godot_console": "C:\\AlmaTheHen\\tools\\Godot_console.exe",
     "godot_version_expected": "4.7.2.stable.official.ed1daf0bf",
     "probe_script": "C:\\AlmaTheHen\\tools\\bionic_godot_probe.ps1",
     "deadline_seconds": 20
   },
+  "preflight": [
+    "Confirm Get-Location resolves to C:\\AlmaTheHen.",
+    "Confirm Test-Path .\\tools\\Godot_console.exe is True.",
+    "If either preflight condition fails, STOP and report BLOCKED without running the probe."
+  ],
   "probe_script_requirements": [
-    "Create only the untracked ignored tools/bionic_godot_probe.ps1 file.",
+    "Create only the untracked ignored tools/bionic_godot_probe.ps1 file if it does not already exist.",
     "The script must invoke $PSScriptRoot\\Godot_console.exe --version.",
     "The script must print the child exit code and propagate that exit code as its own process exit code.",
     "Do not add retries or fallback paths."
@@ -41,12 +49,14 @@
   "execution_rule": {
     "maximum_probe_runs": 1,
     "on_failure": "STOP and report BLOCKED with exact stdout/stderr/exit code. Do not try another shell, path, quoting form, or direct executable invocation.",
-    "timeout_is_failure": true
+    "timeout_is_failure": true,
+    "prior_probe_does_not_count": "The prior probe was run from the wrong local clone and is not evidence about the canonical workspace."
   },
   "acceptance": [
-    "PowerShell probe launches workspace-local Godot_console.exe.",
+    "PowerShell probe launches C:\\AlmaTheHen\\tools\\Godot_console.exe.",
     "Godot prints version 4.7.2.stable.official.ed1daf0bf.",
     "Probe reports child exit code 0 and parent PowerShell exits 0 within 20 seconds.",
+    "git diff --check passes.",
     "No tracked file changes occur except AI_RESULT.json if written.",
     "No persistence or sandbox test executes."
   ],
@@ -56,6 +66,7 @@
       "task_id",
       "status",
       "probe_runs_used",
+      "working_directory",
       "stdout",
       "stderr",
       "exit_code",
