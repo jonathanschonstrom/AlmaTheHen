@@ -1,21 +1,26 @@
 {
-  "protocol_version": "1.9",
-  "task_id": "e0-sandbox-startup-005",
+  "protocol_version": "2.0",
+  "task_id": "e0-sandbox-startup-006",
   "status": "ready",
   "parent_task": "e0-persistence-tests-001",
-  "supersedes": "e0-sandbox-startup-004",
-  "resume_reason": "Slice 004 was BLOCKED before any Godot run because the agent treated the missing ignored wrapper as a required pre-existing file, despite the task authorizing its creation. This slice removes that ambiguity by supplying the exact wrapper content. No prior Godot run from slice 004 counts against this slice.",
-  "objective": "Create the explicitly specified ignored PowerShell wrapper and validate only the isolated Godot sandbox/child-process startup path. Preserve existing persistence test work. Do not execute migration scenarios 1-14.",
+  "continues": "e0-sandbox-startup-005",
+  "resume_reason": "Slice 005 executed one Godot run and identified a concrete harness defect: the parent harness creates the sandbox project and launches the child with --path C:\\Temp\\AlmaSandbox and --script res://tests/test_persistence_migration.gd, but the harness script itself is not copied into the sandbox. Therefore the child cannot load the requested res:// script. This slice uses the single remaining correction/validation opportunity from slice 005; it does not reset the run budget.",
+  "objective": "Apply exactly one minimal test-harness correction so the sandbox contains tests/test_persistence_migration.gd before the child Godot process is launched, then perform the one remaining sandbox-startup validation run. Do not execute migration scenarios 1-14.",
   "current_step_only": true,
   "allowed_tracked_files": [
     "tests/test_persistence_migration.gd",
     "AI_RESULT.json"
   ],
   "allowed_untracked_runtime_files": [
-    "tools/bionic_godot_probe.ps1",
     "tools/bionic_harness_probe.ps1"
   ],
   "preserve_existing_work": true,
+  "diagnosis": {
+    "observed_failure": "Child Godot cannot load res://tests/test_persistence_migration.gd after switching --path to the sandbox project.",
+    "likely_location": "Sandbox setup in tests/test_persistence_migration.gd before child launch.",
+    "hypothesis": "The sandbox copy step omits the harness script itself, so the child project's res://tests/test_persistence_migration.gd does not exist.",
+    "authorized_correction": "During sandbox setup, create <sandbox>/tests if needed and copy the current workspace tests/test_persistence_migration.gd to <sandbox>/tests/test_persistence_migration.gd before launching the child. Fail immediately with an explicit harness error if directory creation or copy fails. Do not change child arguments, sandbox identity, migration logic, or persistence code."
+  },
   "do_not_do": [
     "Do not modify scripts/persistence.gd or any implementation file.",
     "Do not implement, debug, or run migration scenarios 1-14.",
@@ -24,39 +29,25 @@
     "Do not touch neural or behavior files.",
     "Do not merge or rebase main into this branch.",
     "Do not use C:\\BirdAI\\tools or C:\\Users\\jonat\\AlmaTheHen.",
-    "Do not invoke Godot_console.exe directly from the Bionic top-level shell; launch it only from the PowerShell wrapper.",
+    "Do not change tools/bionic_harness_probe.ps1 unless required only to restore the exact wrapper content from slice 005.",
+    "Do not change the child Godot command to bypass the sandbox project.",
+    "Do not perform more than one Godot validation run.",
     "Do not commit or push in this validation slice."
   ],
   "runtime": {
     "required_working_directory": "C:\\AlmaTheHen",
     "godot_console": "C:\\AlmaTheHen\\tools\\Godot_console.exe",
-    "godot_version_verified": "4.7.2.stable.official.ed1daf0bf",
     "wrapper_script": "C:\\AlmaTheHen\\tools\\bionic_harness_probe.ps1",
-    "sandbox_must_be_outside_git_worktree": true,
-    "sandbox_project_must_use_unique_user_data_namespace": true,
-    "real_alma_user_data_must_not_be_written": true,
+    "sandbox_expected": "C:\\Temp\\AlmaSandbox",
     "validation_deadline_seconds": 20
   },
   "preflight": [
     "Confirm Get-Location resolves to C:\\AlmaTheHen.",
     "Confirm Test-Path .\\tools\\Godot_console.exe is True.",
     "Confirm tests/test_persistence_migration.gd exists.",
-    "Do NOT require tools/bionic_harness_probe.ps1 to exist before creation; this slice explicitly creates it.",
-    "If any other preflight condition fails, STOP and report BLOCKED without running Godot."
+    "Confirm tools/bionic_harness_probe.ps1 exists from slice 005.",
+    "If any preflight condition fails, STOP and report BLOCKED without running Godot."
   ],
-  "wrapper_action": {
-    "instruction": "Create or replace tools/bionic_harness_probe.ps1 with exactly the following PowerShell content before validation.",
-    "content_lines": [
-      "$ErrorActionPreference = 'Stop'",
-      "$godot = Join-Path $PSScriptRoot 'Godot_console.exe'",
-      "$project = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path",
-      "$godotArgs = @('--headless', '--path', $project, '--script', 'res://tests/test_persistence_migration.gd', '--', '--harness-only')",
-      "& $godot @godotArgs",
-      "$code = $LASTEXITCODE",
-      "Write-Host \"[WRAPPER] child_exit=$code\"",
-      "exit $code"
-    ]
-  },
   "required_harness_output": [
     "[HARNESS] sandbox=<path>",
     "[CHILD] user_data_dir=<path>",
@@ -71,15 +62,14 @@
     "powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\tools\\bionic_harness_probe.ps1"
   ],
   "execution_rule": {
-    "maximum_godot_runs": 2,
-    "first_failed_run": "Inspect exact stdout/stderr/exit code. Record observed failure -> likely location -> one concrete hypothesis. One minimal targeted correction is permitted, limited to tests/test_persistence_migration.gd or tools/bionic_harness_probe.ps1 according to evidence.",
-    "second_failed_run": "STOP. Mark BLOCKED. Do not edit or run again.",
+    "remaining_godot_runs": 1,
+    "budget_origin": "This is the second and final allowed Godot run from the two-run budget authorized for slice 005.",
+    "on_failure": "STOP. Mark BLOCKED with exact stdout/stderr/exit code and the observed failure. Do not edit or run again.",
     "timeout_is_failure": true,
-    "no_equivalent_retry_variants": true,
-    "fresh_budget_reason": "Slice 004 executed zero Godot runs and blocked only on an ambiguity about whether the explicitly allowed wrapper could be created."
+    "no_equivalent_retry_variants": true
   },
   "acceptance": [
-    "The ignored tools/bionic_harness_probe.ps1 is created from the exact supplied content.",
+    "Sandbox setup creates/copies tests/test_persistence_migration.gd into the sandbox before child launch.",
     "PowerShell wrapper launches the workspace-local Godot runtime and returns naturally within 20 seconds.",
     "Child Godot process exits 0.",
     "No persistence migration scenario executes.",
