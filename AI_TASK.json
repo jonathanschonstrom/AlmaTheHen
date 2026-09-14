@@ -1,76 +1,98 @@
 {
-  "protocol_version": "1.7",
-  "task_id": "e0-godot-wrapper-launch-002",
+  "protocol_version": "1.8",
+  "task_id": "e0-sandbox-startup-004",
   "status": "ready",
   "parent_task": "e0-persistence-tests-001",
-  "supersedes": "e0-godot-wrapper-launch-001",
-  "resume_reason": "The previous wrapper probe was invalidated by a workspace mismatch: Bionic was operating in C:\\Users\\jonat\\AlmaTheHen while the verified Godot runtime existed in C:\\AlmaTheHen. Bionic has now been recreated/repointed to the canonical workspace. It reports Get-Location = C:/AlmaTheHen, git HEAD = 6c67818, and Test-Path .\\tools\\Godot_console.exe = True. Coordinator authorizes one fresh wrapper probe because the prior BLOCKED result did not test the intended environment.",
-  "objective": "Prove that Bionic can launch the workspace-local Godot runtime as a child of PowerShell from the canonical C:\\AlmaTheHen workspace. Do not run the persistence harness or migration scenarios.",
+  "supersedes": "e0-godot-wrapper-launch-002",
+  "resume_reason": "The canonical Bionic workspace is now confirmed as C:\\AlmaTheHen and the bounded PowerShell wrapper probe successfully launched the workspace-local Godot_console.exe, returned version 4.7.2.stable.official.ed1daf0bf, and exited 0. This proves the prior execution blocker was environmental/workspace-related. Coordinator authorizes a fresh bounded sandbox-startup validation through the proven PowerShell wrapper path.",
+  "objective": "Validate only the isolated Godot sandbox/child-process startup path through a PowerShell wrapper that launches the workspace-local Godot runtime. Preserve the existing local persistence migration test work. Do not execute migration scenarios 1-14.",
   "current_step_only": true,
   "allowed_tracked_files": [
+    "tests/test_persistence_migration.gd",
     "AI_RESULT.json"
   ],
-  "allowed_untracked_runtime_file": "tools/bionic_godot_probe.ps1",
+  "allowed_untracked_runtime_files": [
+    "tools/bionic_godot_probe.ps1",
+    "tools/bionic_harness_probe.ps1"
+  ],
   "preserve_existing_work": true,
   "do_not_do": [
-    "Do not modify tests/test_persistence_migration.gd.",
     "Do not modify scripts/persistence.gd or any implementation file.",
-    "Do not run migration scenarios 1-14.",
-    "Do not run the sandbox harness in this slice.",
-    "Do not request broader filesystem access.",
-    "Do not use C:\\BirdAI\\tools.",
-    "Do not use C:\\Users\\jonat\\AlmaTheHen.",
-    "Do not change Windows execution policy persistently.",
-    "Do not retry equivalent quoting/path variants."
+    "Do not implement, debug, or run migration scenarios 1-14.",
+    "Do not rewrite tests/test_persistence_migration.gd from scratch.",
+    "Do not change tracked project.godot or VERSION.txt.",
+    "Do not touch neural or behavior files.",
+    "Do not merge or rebase main into this branch.",
+    "Do not use C:\\BirdAI\\tools or C:\\Users\\jonat\\AlmaTheHen.",
+    "Do not invoke Godot_console.exe directly from the Bionic top-level shell; launch it only as a child of the PowerShell wrapper.",
+    "Do not commit or push in this validation slice."
   ],
   "runtime": {
     "required_working_directory": "C:\\AlmaTheHen",
-    "required_starting_head": "6c67818",
     "godot_console": "C:\\AlmaTheHen\\tools\\Godot_console.exe",
-    "godot_version_expected": "4.7.2.stable.official.ed1daf0bf",
-    "probe_script": "C:\\AlmaTheHen\\tools\\bionic_godot_probe.ps1",
-    "deadline_seconds": 20
+    "godot_version_verified": "4.7.2.stable.official.ed1daf0bf",
+    "wrapper_script": "C:\\AlmaTheHen\\tools\\bionic_harness_probe.ps1",
+    "sandbox_must_be_outside_git_worktree": true,
+    "sandbox_project_must_use_unique_user_data_namespace": true,
+    "real_alma_user_data_must_not_be_written": true,
+    "validation_deadline_seconds": 20
   },
   "preflight": [
     "Confirm Get-Location resolves to C:\\AlmaTheHen.",
     "Confirm Test-Path .\\tools\\Godot_console.exe is True.",
-    "If either preflight condition fails, STOP and report BLOCKED without running the probe."
+    "Confirm tests/test_persistence_migration.gd exists.",
+    "If any preflight condition fails, STOP and report BLOCKED without running Godot."
   ],
-  "probe_script_requirements": [
-    "Create only the untracked ignored tools/bionic_godot_probe.ps1 file if it does not already exist.",
-    "The script must invoke $PSScriptRoot\\Godot_console.exe --version.",
-    "The script must print the child exit code and propagate that exit code as its own process exit code.",
-    "Do not add retries or fallback paths."
+  "wrapper_requirements": [
+    "Create or replace only the ignored untracked tools/bionic_harness_probe.ps1.",
+    "The wrapper must launch $PSScriptRoot\\Godot_console.exe as a child process with: --headless --path <C:\\AlmaTheHen> --script res://tests/test_persistence_migration.gd -- --harness-only.",
+    "The wrapper must preserve Godot stdout/stderr, print [WRAPPER] child_exit=<code>, and propagate the child exit code as its own exit code.",
+    "Do not add fallback executable paths or retries inside the wrapper."
+  ],
+  "required_harness_output": [
+    "[HARNESS] sandbox=<path>",
+    "[CHILD] user_data_dir=<path>",
+    "[CHILD] alma_save=<path>",
+    "[ISOLATION] PASS",
+    "[CLEANUP] PASS",
+    "[HARNESS] PASS",
+    "[WRAPPER] child_exit=0"
   ],
   "validation_commands": [
     "git diff --check",
-    "powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\tools\\bionic_godot_probe.ps1"
+    "powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\tools\\bionic_harness_probe.ps1"
   ],
   "execution_rule": {
-    "maximum_probe_runs": 1,
-    "on_failure": "STOP and report BLOCKED with exact stdout/stderr/exit code. Do not try another shell, path, quoting form, or direct executable invocation.",
+    "maximum_godot_runs": 2,
+    "first_failed_run": "Inspect exact stdout/stderr/exit code. Record observed failure -> likely location -> one concrete hypothesis. One minimal targeted correction is permitted, limited to tests/test_persistence_migration.gd or tools/bionic_harness_probe.ps1 according to the evidence.",
+    "second_failed_run": "STOP. Mark BLOCKED. Do not edit or run again.",
     "timeout_is_failure": true,
-    "prior_probe_does_not_count": "The prior probe was run from the wrong local clone and is not evidence about the canonical workspace."
+    "no_equivalent_retry_variants": true,
+    "fresh_budget_reason": "The prior sandbox attempts were invalidated by the wrong Bionic workspace/execution path. The canonical workspace and PowerShell-child launch path are now independently verified."
   },
   "acceptance": [
-    "PowerShell probe launches C:\\AlmaTheHen\\tools\\Godot_console.exe.",
-    "Godot prints version 4.7.2.stable.official.ed1daf0bf.",
-    "Probe reports child exit code 0 and parent PowerShell exits 0 within 20 seconds.",
-    "git diff --check passes.",
-    "No tracked file changes occur except AI_RESULT.json if written.",
-    "No persistence or sandbox test executes."
+    "PowerShell wrapper launches the workspace-local Godot runtime and returns naturally within 20 seconds.",
+    "Child Godot process exits 0.",
+    "No persistence migration scenario executes.",
+    "Child prints OS.get_user_data_dir() and globalized user://alma/individual.json.",
+    "Sandbox user-data/save path is proven distinct from the real BirdAI/Alma user-data path before persistence can write.",
+    "Sandbox cleanup succeeds before [HARNESS] PASS.",
+    "[WRAPPER] child_exit=0 is printed.",
+    "git diff --check passes."
   ],
   "result_requirements": {
     "required_fields": [
       "protocol_version",
       "task_id",
       "status",
-      "probe_runs_used",
-      "working_directory",
+      "godot_runs_used",
+      "changed_files",
+      "validation_results",
       "stdout",
       "stderr",
       "exit_code",
       "elapsed_seconds",
+      "isolation_evidence",
       "git_diff_check",
       "git_status",
       "summary",
