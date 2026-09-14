@@ -16,11 +16,15 @@ def test_required_governance_files_exist():
     require("BIRDAI-NEUROSCIENCE-REFERENCE.md")
 
 
-def test_current_phase_is_e0():
+def test_current_phase_is_p1():
     governance = require(".birdai/governance.yaml")
     roadmap = require(".birdai/roadmap.yaml")
-    assert "current_phase: E0" in governance
-    assert "milestone: E0" in roadmap
+    assert "current_phase: P1" in governance
+    assert "milestone: P1" in roadmap
+    assert "objective: verified_neural_baseline" in roadmap
+    assert "title: Persistent individual" in roadmap
+    assert "status: complete" in roadmap
+    assert "title: Verified neural baseline" in roadmap
     assert "status: active" in roadmap
 
 

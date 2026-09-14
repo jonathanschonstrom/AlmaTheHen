@@ -12,7 +12,7 @@ authority_order:
   - .birdai/adr
   - github_issue
 
-current_phase: E0
+current_phase: P1
 
 hard_rules:
   - do_not_skip_roadmap_phases
