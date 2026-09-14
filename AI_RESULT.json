@@ -1,7 +1,7 @@
-﻿{
-    "protocol_version":  "2.3",
-    "task_id":  "e0-sandbox-whitespace-finalize-003",
-    "mode":  "FINALIZE_ONLY",
+{
+    "protocol_version":  "2.6",
+    "task_id":  "e0-persistence-tests-direct-finalize-001",
+    "mode":  "DIRECT_VALIDATE_FINALIZE",
     "status":  "success",
     "godot_runs_used":  1,
     "changed_files":  [
@@ -13,13 +13,15 @@
                             "AI_RESULT.json"
                         ],
     "git_diff_check":  "pass",
-    "validation_command":  "powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\tools\\bionic_harness_probe.ps1",
+    "validation_command":  "tools/Godot_console.exe --headless --path . --script res://tests/test_persistence_migration.gd",
     "validation_result":  "pass",
     "validation_exit_code":  0,
-    "wrapper_marker":  "[WRAPPER] child_exit=0",
-    "validated_test_hash":  "5210fe147d0f814d2e24a7561a1b395dc3400fbf",
+    "validated_test_hash":  "b3bfdb68c55f623ea266267e9c3199421ec29827",
+    "scenarios_passed":  14,
+    "isolation":  "pass",
+    "cleanup":  "pass",
     "blockers":  [
 
                  ],
-    "summary":  "cleaned trailing whitespace, revalidated exact E0 sandbox test bytes, tracked and committed"
+    "summary":  "Completed and validated the isolated 14-scenario E0 persistence migration regression suite."
 }
