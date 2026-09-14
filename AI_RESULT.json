@@ -1,6 +1,16 @@
 {
-  "task_id": "harmless-roundtrip-001",
+  "protocol_version": "2.0",
+  "task_id": "e0-sandbox-startup-006",
   "status": "success",
-  "timestamp": 1789166060.1397762,
-  "output": "Read VERSION.txt and check version."
+  "godot_runs_used": 1,
+  "changed_files": [
+    "tests/test_persistence_migration.gd"
+  ],
+  "git_diff_check": "pass",
+  "validation_command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\tools\\bionic_harness_probe.ps1",
+  "validation_result": "pass",
+  "exit_code": 0,
+  "wrapper_marker": "[WRAPPER] child_exit=0",
+  "blockers": [],
+  "summary": "isolated E0 sandbox startup validated successfully"
 }
