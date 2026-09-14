@@ -1,25 +1,26 @@
 {
-    "slice_id":  "e0-hen-share-continuity-001",
+    "slice_id":  "e0-body-state-evidence-002",
     "status":  "PASS",
-    "base_commit":  "fea6d7be9745076060f966aec18765db0e6f2339",
-    "elapsed_seconds":  0.568,
+    "base_commit":  "93cc324f95d292c6ef8974ceff91d1ca29a6d424",
+    "elapsed_seconds":  0.618,
     "diagnosis":  {
-                      "observed_failure":  "Agent.export_data persisted hen_share, but Agent.restore omitted it, silently losing the exported field after restart.",
-                      "likely_location":  "scripts/cognition/agent.gd Agent.restore",
-                      "hypothesis":  "Restoring hen_share with a default-preserving data.get call closes the continuity gap without changing legacy-save behavior or decision policy.",
-                      "minimal_test":  "Set hen_share to a non-default value in persistence scenario 12, save/load through the existing isolated harness, and assert the restored value while rerunning all 14 scenarios."
+                      "observed_failure":  "Prior slice generated unindented scenario-12 test lines, causing a GDScript parse error before any persistence scenario executed.",
+                      "likely_location":  "test-generation tooling only",
+                      "hypothesis":  "Rebuilding the test from accepted HEAD and deriving indentation from existing scenario-12 lines will produce valid test-only evidence without production changes.",
+                      "minimal_test":  "Run the corrected full isolated 14-scenario persistence suite once under the 20-second deadline."
                   },
     "attempts":  {
                      "diagnostic_runs":  0,
                      "validation_runs":  1,
                      "strategies":  [
                                         {
-                                            "id":  "restore-exported-hen-share",
-                                            "operation":  "Add default-preserving hen_share restore and one round-trip regression assertion.",
+                                            "id":  "rebuild-test-from-head",
+                                            "operation":  "Rebuild scenario 12 from accepted HEAD with inherited indentation and add representative body-state assertions.",
                                             "uses":  1,
                                             "outcomes":  [
+                                                             "GDScript parsed",
                                                              "14/14 persistence scenarios passed",
-                                                             "scenario 12 preserved hen_share",
+                                                             "body-state round trip passed",
                                                              "isolation and cleanup passed"
                                                          ]
                                         }
@@ -27,22 +28,22 @@
                  },
     "runs":  [
                  {
-                     "scenario_id":  "hen-share-continuity",
+                     "scenario_id":  "e0-body-state-002",
                      "command":  "tools/Godot_console.exe --headless --path . --script res://tests/test_persistence_migration.gd",
                      "cwd":  "C:\\AlmaTheHen",
                      "version":  "4.7.2.stable.official.ed1daf0bf - https://godotengine.org",
                      "seed":  null,
                      "timeout_seconds":  20,
-                     "elapsed_seconds":  0.568,
+                     "elapsed_seconds":  0.618,
                      "parent":  {
-                                    "pid":  45784,
-                                    "start_utc":  "2026-09-14T21:30:01.7488231Z",
+                                    "pid":  32604,
+                                    "start_utc":  "2026-09-14T22:07:07.6734596Z",
                                     "exit_code":  0
                                 },
                      "children":  [
                                       {
-                                          "pid":  36288,
-                                          "start_utc":  "2026-09-14T21:30:01.7582380Z",
+                                          "pid":  8092,
+                                          "start_utc":  "2026-09-14T22:07:07.6834800Z",
                                           "exit_code":  0
                                       }
                                   ],
@@ -51,11 +52,11 @@
                      "last_passed_step":  "[HARNESS] PASS",
                      "failed_step":  null,
                      "stdout":  {
-                                    "path":  "C:\\BirdAI_E0_evidence\\e0-hen-share-20260914T213001Z\\godot.stdout.txt",
-                                    "sha256":  "a853d50c2283209565ba437b532271e268add3c398a55283ef6af8700b017d89"
+                                    "path":  "C:\\BirdAI_E0_evidence\\e0-body-state-002-20260914T220707Z\\godot.stdout.txt",
+                                    "sha256":  "d30110d36d3c03e7d282bf7c6fb693f7f72f381fdae0365bfd0abca590b0a14d"
                                 },
                      "stderr":  {
-                                    "path":  "C:\\BirdAI_E0_evidence\\e0-hen-share-20260914T213001Z\\godot.stderr.txt",
+                                    "path":  "C:\\BirdAI_E0_evidence\\e0-body-state-002-20260914T220707Z\\godot.stderr.txt",
                                     "sha256":  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
                                 }
                  }
@@ -63,24 +64,26 @@
     "cleanup":  {
                     "status":  "PASS",
                     "paths":  [
-                                  "C:/Users/jonat/AppData/Local/Temp/birdai-e0-persistence-1789421401.878-103269",
-                                  "C:/Users/jonat/AppData/Roaming/birdai-e0-persistence-1789421401.878-103269"
+                                  "C:/Users/jonat/AppData/Local/Temp/birdai-e0-persistence-1789423627.806-104309",
+                                  "C:/Users/jonat/AppData/Roaming/birdai-e0-persistence-1789423627.806-104309"
                               ],
-                    "details":  "Harness reported cleanup PASS and observed sandbox/user-data paths were absent after natural process exit."
+                    "details":  "Harness reported cleanup PASS and observed sandbox/user-data paths were absent after exit."
                 },
     "changed_files":  [
-                          "scripts/cognition/agent.gd",
                           "tests/test_persistence_migration.gd",
                           "AI_RESULT.json"
                       ],
     "pass_evidence":  [
-                          "Agent.restore now restores saved hen_share with default-preserving fallback.",
-                          "Scenario 12 sets hen_share=0.63 and asserts restored hen_share=0.63.",
-                          "Godot isolated persistence suite: 14/14 PASS.",
-                          "[ISOLATION] PASS, [CLEANUP] PASS, [HARNESS] PASS.",
-                          "stdout: C:\\BirdAI_E0_evidence\\e0-hen-share-20260914T213001Z\\godot.stdout.txt sha256=a853d50c2283209565ba437b532271e268add3c398a55283ef6af8700b017d89",
-                          "stderr: C:\\BirdAI_E0_evidence\\e0-hen-share-20260914T213001Z\\godot.stderr.txt sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-                          "observability: C:\\BirdAI_E0_evidence\\e0-hen-share-20260914T213001Z\\runner.observability.txt sha256=e482b378f9b2735cc2b43932c1ef8ecbd8e1486a2c04b12e48eba206fdf01c81"
+                          "Scenario 12 round-tripped Homeostasis frustration.",
+                          "Scenario 12 round-tripped metabolic_energy, hydration and sleep_pressure.",
+                          "Scenario 12 round-tripped stimulation_input and social_presence_input.",
+                          "Scenario 12 round-tripped last_intake.food and cumulative.food_ingested.",
+                          "Existing world-state assertions remained passing.",
+                          "Full isolated persistence suite: 14/14 PASS.",
+                          "[ISOLATION] PASS, [CLEANUP] PASS and [HARNESS] PASS.",
+                          "stdout: C:\\BirdAI_E0_evidence\\e0-body-state-002-20260914T220707Z\\godot.stdout.txt sha256=d30110d36d3c03e7d282bf7c6fb693f7f72f381fdae0365bfd0abca590b0a14d",
+                          "stderr: C:\\BirdAI_E0_evidence\\e0-body-state-002-20260914T220707Z\\godot.stderr.txt sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                          "observability: C:\\BirdAI_E0_evidence\\e0-body-state-002-20260914T220707Z\\runner.observability.txt sha256=8949b34fde0f689c5f83e2abb1eed3af7e497f1e776de513f68c63c3464254b5"
                       ],
-    "stop_reason":  "PASS criteria satisfied; push one issue branch and open one PR for review, then stop."
+    "stop_reason":  "Corrected slice PASS criteria satisfied; submit test-only PR for review and stop."
 }

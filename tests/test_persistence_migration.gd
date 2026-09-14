@@ -288,7 +288,7 @@ func _scenario_6() -> bool:
 	var world = _WorldScript.new()
 	var agent = _AgentScript.new(world, 606)
 	agent.learning.models = {"o3:push": {"count": 4, "effects": {"object_motion": 0.42}, "success": 0.75, "outcome": "rullade", "reward": 0.3, "error": 0.1}}
-	agent.learning.contexts = {"o5:peck@lamp_lit": {"count": 2, "effects": {"food_access": 0.6}, "success": 1.0, "outcome": "luckan Ã¶ppnades", "reward": 0.8, "error": 0.2}}
+	agent.learning.contexts = {"o5:peck@lamp_lit": {"count": 2, "effects": {"food_access": 0.6}, "success": 1.0, "outcome": "luckan ├â┬Âppnades", "reward": 0.8, "error": 0.2}}
 	agent.learning.skills = {"push": {"attempts": 5, "successes": 3}}
 	agent.learning.flight.timing = 0.61
 	agent.learning.flight.best_timing = 0.57
@@ -399,6 +399,14 @@ func _scenario_12() -> bool:
 	source_agent.personality.curiosity = 0.91
 	source_agent.decision_count = 123
 	source_agent.distance_walked = 45.6
+	source_agent.body.frustration = 0.29
+	source_agent.body.physiology.state.metabolic_energy = 0.52
+	source_agent.body.physiology.state.hydration = 0.67
+	source_agent.body.physiology.state.sleep_pressure = 0.41
+	source_agent.body.physiology.stimulation_input = 0.66
+	source_agent.body.physiology.social_presence_input = 0.31
+	source_agent.body.physiology.last_intake.food = 0.14
+	source_agent.body.physiology.cumulative.food_ingested = 1.75
 	var data := {"schema": 2, "saved_at": "test-s12", "agent": source_agent.export_data(), "world": source_world.export_data()}
 	if not _write_valid_envelope(legacy_path, data):
 		return _check(false, "Scenario 12: could not write legacy state")
@@ -422,6 +430,22 @@ func _scenario_12() -> bool:
 	if not _check(is_equal_approx(float(restored_agent.personality.curiosity), 0.91), "Scenario 12: personality changed"):
 		return false
 	if not _check(int(restored_agent.decision_count) == 123, "Scenario 12: decision_count changed"):
+		return false
+	if not _check(is_equal_approx(float(restored_agent.body.frustration), 0.29), "Scenario 12: body frustration changed"):
+		return false
+	if not _check(is_equal_approx(float(restored_agent.body.physiology.state.metabolic_energy), 0.52), "Scenario 12: metabolic energy changed"):
+		return false
+	if not _check(is_equal_approx(float(restored_agent.body.physiology.state.hydration), 0.67), "Scenario 12: hydration changed"):
+		return false
+	if not _check(is_equal_approx(float(restored_agent.body.physiology.state.sleep_pressure), 0.41), "Scenario 12: sleep pressure changed"):
+		return false
+	if not _check(is_equal_approx(float(restored_agent.body.physiology.stimulation_input), 0.66), "Scenario 12: stimulation input changed"):
+		return false
+	if not _check(is_equal_approx(float(restored_agent.body.physiology.social_presence_input), 0.31), "Scenario 12: social presence input changed"):
+		return false
+	if not _check(is_equal_approx(float(restored_agent.body.physiology.last_intake.food), 0.14), "Scenario 12: last food intake changed"):
+		return false
+	if not _check(is_equal_approx(float(restored_agent.body.physiology.cumulative.food_ingested), 1.75), "Scenario 12: cumulative food changed"):
 		return false
 	if not _check(is_equal_approx(restored_world.now, 432.5), "Scenario 12: world time changed"):
 		return false
