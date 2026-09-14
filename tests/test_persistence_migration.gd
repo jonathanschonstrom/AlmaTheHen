@@ -288,7 +288,7 @@ func _scenario_6() -> bool:
 	var world = _WorldScript.new()
 	var agent = _AgentScript.new(world, 606)
 	agent.learning.models = {"o3:push": {"count": 4, "effects": {"object_motion": 0.42}, "success": 0.75, "outcome": "rullade", "reward": 0.3, "error": 0.1}}
-	agent.learning.contexts = {"o5:peck@lamp_lit": {"count": 2, "effects": {"food_access": 0.6}, "success": 1.0, "outcome": "luckan ÃƒÂ¶ppnades", "reward": 0.8, "error": 0.2}}
+	agent.learning.contexts = {"o5:peck@lamp_lit": {"count": 2, "effects": {"food_access": 0.6}, "success": 1.0, "outcome": "luckan Ã¶ppnades", "reward": 0.8, "error": 0.2}}
 	agent.learning.skills = {"push": {"attempts": 5, "successes": 3}}
 	agent.learning.flight.timing = 0.61
 	agent.learning.flight.best_timing = 0.57
@@ -391,7 +391,6 @@ func _scenario_12() -> bool:
 	var source_agent = _AgentScript.new(source_world, 1201)
 	source_agent.individual_id = "alma-central-s12"
 	source_agent.bird_name = "Alma Persist"
-	source_agent.hen_share = 0.63
 	source_agent.age = 321.25
 	source_agent.position = Vector3(1.25, 0.0, -0.75)
 	source_agent.relationship.trust = 0.77
@@ -410,8 +409,6 @@ func _scenario_12() -> bool:
 	if not _check(restored_agent.individual_id == "alma-central-s12", "Scenario 12: individual_id changed"):
 		return false
 	if not _check(restored_agent.bird_name == "Alma Persist", "Scenario 12: bird name changed"):
-		return false
-	if not _check(is_equal_approx(float(restored_agent.hen_share), 0.63), "Scenario 12: hen_share changed"):
 		return false
 	if not _check(is_equal_approx(restored_agent.age, 321.25), "Scenario 12: age changed"):
 		return false

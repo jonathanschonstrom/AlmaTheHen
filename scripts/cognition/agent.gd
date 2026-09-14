@@ -28,7 +28,7 @@ var phase_time = 0.0
 var action_duration = 0.0
 var target_position = Vector3.ZERO
 var last_actions = {}
-var thought = "Vad finns hÃ¤r?"
+var thought = "Vad finns här?"
 var sense_clock = 0.0
 var last_sound_sequence = 0
 var velocity_y = 0.0
@@ -124,8 +124,8 @@ func process_stimuli() -> void:
 			var effects = body.drive_effects(before)
 			relationship.trust = maxf(0, relationship.trust - 0.06)
 			relationship.negative += 1
-			memory.add_episode({"time": age, "target": event.source, "action": "heard", "outcome": "Ett plÃ¶tsligt ljud gjorde mig rÃ¤dd.", "reward": -0.5, "position": vec(position), "effects": effects, "outcomes": {"threat": event.intensity}})
-			thought = "Oj. Bort frÃ¥n ljudet."
+			memory.add_episode({"time": age, "target": event.source, "action": "heard", "outcome": "Ett plötsligt ljud gjorde mig rädd.", "reward": -0.5, "position": vec(position), "effects": effects, "outcomes": {"threat": event.intensity}})
+			thought = "Oj. Bort från ljudet."
 		elif event.source == "o8" and position.distance_to(event.position) < 2.5:
 			body.apply_outcome({"social_contact": 0.05, "calming": 0.03})
 			relationship.trust = minf(1, relationship.trust + 0.012)
@@ -134,13 +134,13 @@ func process_stimuli() -> void:
 func select_action() -> void:
 	if neural_control_enabled:
 		if not neural_selection_ready or neural_selected_family.is_empty():
-			thought = "VÃ¤ntar pÃ¥ NeuralBrain."
+			thought = "Väntar på NeuralBrain."
 			return
 		var family = neural_selected_family
 		neural_selection_ready = false
 		current = neural_actuator.resolve(self, family)
 		if current.is_empty():
-			thought = "NeuralBrain valde %s men inget aktuellt mÃ¥l kunde utfÃ¶ras." % family
+			thought = "NeuralBrain valde %s men inget aktuellt mål kunde utföras." % family
 			return
 		current["neural_request_id"] = neural_request_id
 		neural_last_actuation = {
@@ -196,7 +196,7 @@ func approach(dt: float) -> void:
 		begin_act()
 		return
 	if phase_time > 18.0 + personality.persistence * 10.0:
-		finish({"outcomes": {}, "success": false, "outcome": "VÃ¤gen fram fungerade inte. Jag provar nÃ¥got annat.", "donor": ""})
+		finish({"outcomes": {}, "success": false, "outcome": "Vägen fram fungerade inte. Jag provar något annat.", "donor": ""})
 		return
 	heading = heading.lerp(delta.normalized(), minf(1, dt * 6)).normalized()
 	var speed = 1.6 if current.action == "flee" else 0.73
@@ -219,10 +219,10 @@ func begin_act() -> void:
 		velocity_y = 1.4 if ascent_powered else 2.8
 		trial_height = 0
 		trial_start = position
-		thought = "Provar att nÃ¥ trÃ¤ytan och landa."
+		thought = "Provar att nå träytan och landa."
 		return
 	if current.action == "wings" and not world.practice_clear(position):
-		finish({"outcomes": {}, "success": false, "outcome": "FÃ¶r trÃ¥ngt hÃ¤r. Jag behÃ¶ver fri mark fÃ¶r vingfÃ¶rsÃ¶ket.", "donor": ""})
+		finish({"outcomes": {}, "success": false, "outcome": "För trångt här. Jag behöver fri mark för vingförsöket.", "donor": ""})
 		return
 	if current.action in ["hop", "wings"]:
 		velocity_y = 1.4 if current.action == "wings" else 2.0
@@ -255,11 +255,11 @@ func ascend(dt: float) -> void:
 		velocity_y = 0
 		phase = "act"
 		phase_time = 0
-		thought = "FÃ¶tterna fick fÃ¤ste. HÃ¤r kan jag sitta och se mig om."
+		thought = "Fötterna fick fäste. Här kan jag sitta och se mig om."
 		return
 	if position.y <= 0 and phase_time > 0.15:
 		last_perch_attempts[current.target] = float(learning.flight.best_height)
-		finish({"outcomes": {"physical_effort": 0.035, "sensory_stimulation": 0.02}, "success": false, "outcome": "FÃ¶rsÃ¶ket nÃ¥dde %.0f cm. Pinnen var fÃ¶r hÃ¶g att landa pÃ¥." % (trial_height * 100), "donor": ""})
+		finish({"outcomes": {"physical_effort": 0.035, "sensory_stimulation": 0.02}, "success": false, "outcome": "Försöket nådde %.0f cm. Pinnen var för hög att landa på." % (trial_height * 100), "donor": ""})
 
 func descend(dt: float) -> void:
 	var direction = Vector3(target_position.x - position.x, 0, target_position.z - position.z)
@@ -300,14 +300,14 @@ func act(dt: float) -> void:
 	if current.action == "wings":
 		position.y = 0
 		learning.learn_flight(trial_height, trial_airtime, position.distance_to(trial_start))
-		outcome = {"outcomes": {"sensory_stimulation": 0.18, "physical_effort": 0.055, "motor_information": clampf(trial_height * 0.6 + trial_airtime * 0.1, 0.0, 0.4)}, "success": trial_height > 0.25, "outcome": "VingfÃ¶rsÃ¶k: %.0f cm hÃ¶jd, %.2f s i luften." % [trial_height * 100, trial_airtime], "donor": ""}
+		outcome = {"outcomes": {"sensory_stimulation": 0.18, "physical_effort": 0.055, "motor_information": clampf(trial_height * 0.6 + trial_airtime * 0.1, 0.0, 0.4)}, "success": trial_height > 0.25, "outcome": "Vingförsök: %.0f cm höjd, %.2f s i luften." % [trial_height * 100, trial_airtime], "donor": ""}
 	else:
 		# Verify contact again before an effect. No remote eating, drinking or manipulation.
 		if world.objects.has(current.target):
 			var obj = world.objects[current.target]
 			var separation = Vector2(obj.position.x, obj.position.z).distance_to(Vector2(position.x, position.z))
 			if not obj.active or separation > 1.0 or (current.action in ["eat", "drink"] and absf(position.y - obj.position.y) > 0.25):
-				finish({"outcomes": {}, "success": false, "outcome": "FÃ¶remÃ¥let var inte lÃ¤ngre inom rÃ¤ckhÃ¥ll.", "donor": ""})
+				finish({"outcomes": {}, "success": false, "outcome": "Föremålet var inte längre inom räckhåll.", "donor": ""})
 				return
 		if not current.get("context", "").is_empty():
 			# Observe the lamp at contact, before pressing it can change the signal.
@@ -373,9 +373,9 @@ func finish(result: Dictionary) -> void:
 
 func touch() -> String:
 	if not world.objects.o8.active or position.distance_to(world.objects.o8.position) > 1.7:
-		return "MÃ¤nniskan behÃ¶ver stÃ¥ nÃ¤rmare fÃ¶r fÃ¶rsiktig kontakt."
+		return "Människan behöver stå närmare för försiktig kontakt."
 	var accepted = relationship.trust > 0.3
-	var text = "Lugn berÃ¶ring. Den bekanta handen kÃ¤nns trygg." if accepted else "En obekant hand. Jag vill ha lite avstÃ¥nd."
+	var text = "Lugn beröring. Den bekanta handen känns trygg." if accepted else "En obekant hand. Jag vill ha lite avstånd."
 	if accepted:
 		body.apply_outcome({"social_contact": 0.16, "calming": 0.05})
 	else:
@@ -410,14 +410,14 @@ func accept_neural_decision(decision: Dictionary) -> void:
 		current.clear()
 		phase = "idle"
 		phase_time = 0.0
-		thought = "NeuralBrain avbrÃ¶t pÃ¥gÃ¥ende handling fÃ¶r FLEE."
+		thought = "NeuralBrain avbröt pågående handling för FLEE."
 
 func neural_bridge_unavailable(message: String = "") -> void:
 	if not neural_control_enabled:
 		return
 	neural_selection_ready = false
 	if current.is_empty():
-		thought = "NeuralBrain Ã¤r inte tillgÃ¤nglig." if message.is_empty() else message
+		thought = "NeuralBrain är inte tillgänglig." if message.is_empty() else message
 
 func utility_shadow_family() -> String:
 	# Utility remains a diagnostic comparator in neural-control mode. Preserve
@@ -498,7 +498,6 @@ func export_data() -> Dictionary:
 func restore(data: Dictionary) -> void:
 	individual_id = data.get("individual_id", individual_id)
 	bird_name = data.get("name", "Alma")
-	hen_share = float(data.get("hen_share", hen_share))
 	age = float(data.get("age", 0))
 	position = unvec(data.get("position", [0, 0, 0]))
 	support_id = data.get("support_id", "")
@@ -518,7 +517,7 @@ func restore(data: Dictionary) -> void:
 	rng.seed = int(data.get("rng_seed", "42"))
 	rng.state = int(data.get("rng_state", str(rng.state)))
 	current.clear()
-	thought = "Jag kÃ¤nner igen rummet."
+	thought = "Jag känner igen rummet."
 
 static func vec(v: Vector3) -> Array:
 	return [v.x, v.y, v.z]
