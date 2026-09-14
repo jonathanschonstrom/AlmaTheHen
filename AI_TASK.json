@@ -1,11 +1,11 @@
 {
-  "protocol_version": "1.4",
-  "task_id": "e0-sandbox-startup-002",
+  "protocol_version": "1.5",
+  "task_id": "e0-sandbox-startup-003",
   "status": "ready",
   "parent_task": "e0-persistence-tests-001",
-  "supersedes": "e0-sandbox-startup-001",
-  "resume_reason": "Previous slice was BLOCKED only because Bionic could not access C:\\BirdAI\\tools\\Godot_console.exe. Environment-unblock verification now confirms the executable exists, is readable/executable, and reports Godot Engine v4.7.2.stable.official.ed1daf0bf. Coordinator authorizes a fresh bounded validation budget based on this new evidence.",
-  "objective": "Validate only the isolated Godot sandbox/child-process startup path. Preserve the existing local persistence migration test work. Do not run migration scenarios 1-14.",
+  "supersedes": "e0-sandbox-startup-002",
+  "resume_reason": "Previous slice was BLOCKED by Bionic access to C:\\BirdAI\\tools. Godot has now been copied into the Bionic workspace at C:\\AlmaTheHen\\tools, both Godot.exe and Godot_console.exe are present, tools is untracked/ignored, and a manual workspace-local version check returned 4.7.2.stable.official.ed1daf0bf. Coordinator authorizes a fresh bounded validation budget based on this new environment evidence.",
+  "objective": "Validate only the isolated Godot sandbox/child-process startup path using the workspace-local Godot runtime. Preserve the existing local persistence migration test work. Do not run migration scenarios 1-14.",
   "current_step_only": true,
   "allowed_files": [
     "tests/test_persistence_migration.gd",
@@ -19,12 +19,14 @@
     "Do not change tracked project.godot or VERSION.txt.",
     "Do not touch neural or behavior files.",
     "Do not merge or rebase main into this branch.",
-    "Do not refactor OS.execute to OS.create_process unless the validation proves a concrete startup defect that requires that exact minimal correction.",
+    "Do not use C:\\BirdAI\\tools or request broader filesystem access.",
+    "Do not refactor OS.execute to OS.create_process unless validation proves a concrete startup defect requiring that exact minimal correction.",
     "Do not commit or push until slice validation passes."
   ],
   "runtime": {
-    "godot_console": "C:\\BirdAI\\tools\\Godot_console.exe",
+    "godot_console": ".\\tools\\Godot_console.exe",
     "godot_version_verified": "4.7.2.stable.official.ed1daf0bf",
+    "godot_runtime_inside_bionic_workspace": true,
     "sandbox_must_be_outside_git_worktree": true,
     "sandbox_project_must_use_unique_user_data_namespace": true,
     "real_alma_user_data_must_not_be_written": true,
@@ -44,11 +46,11 @@
     "second_failed_run": "STOP. Mark BLOCKED. Do not edit or run again.",
     "timeout_is_failure": true,
     "no_equivalent_retry_variants": true,
-    "prior_slice_attempts_do_not_count": "Fresh budget is explicitly authorized because the prior blocker was external environment access and is now resolved."
+    "prior_slice_attempts_do_not_count": "Fresh budget is explicitly authorized because the previous blocker was external workspace access and the runtime is now available inside the Bionic workspace."
   },
   "validation_commands": [
     "git diff --check",
-    "C:\\BirdAI\\tools\\Godot_console.exe --headless --path . --script res://tests/test_persistence_migration.gd -- --harness-only"
+    ".\\tools\\Godot_console.exe --headless --path . --script res://tests/test_persistence_migration.gd -- --harness-only"
   ],
   "acceptance": [
     "Child Godot process exits 0.",
