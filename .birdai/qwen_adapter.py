@@ -242,6 +242,10 @@ def _windows_qwen_standalone_command(
            <root>\\qwen-code\\lib\\cli-entry.js
 
     and direct use of the inner qwen.cmd.
+
+    Candidate runtimes are derived only from the configured executable path.
+    An unrelated .cmd/.bat must never be redirected to a globally installed
+    Qwen runtime through LOCALAPPDATA or another ambient location.
     """
     if os.name != "nt":
         return None
@@ -255,14 +259,6 @@ def _windows_qwen_standalone_command(
         path.parent.parent,
         path.parent.parent / "qwen-code",
     ]
-
-    local_app_data = os.environ.get("LOCALAPPDATA")
-    if local_app_data:
-        roots.append(
-            Path(local_app_data)
-            / "qwen-code"
-            / "qwen-code"
-        )
 
     seen: set[str] = set()
 
