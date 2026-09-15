@@ -1,0 +1,37 @@
+{
+  "goal": {
+    "slice_id": "issue-34-neuralbrain-outage-regression",
+    "issue": "#34",
+    "objective": "Add a focused behavioral Godot regression proving that when NeuralBrain becomes unavailable in neural-control mode, the real Agent does not fall back to utility selection. Create only tests/test_neural_control_outage.gd. The test must use the real World and Agent classes, put the agent in neural-control mode, make legacy utility capable of choosing an action, invoke neural_bridge_unavailable(), call select_action(), and assert that current remains empty and the agent waits for NeuralBrain. Then inject one valid NeuralBrain decision and assert neural-controlled actuation resumes. Do not modify production controller behavior.",
+    "pass_definition": "The focused headless Godot regression exits 0, demonstrates no utility fallback after NeuralBrain outage, demonstrates recovery after a valid neural decision, creates no repository artifacts, and tests/test_neural_control_outage.gd is the only changed file."
+  },
+  "allowed_files": [
+    "tests/test_neural_control_outage.gd"
+  ],
+  "authority": {
+    "human_approval_required": false,
+    "human_approval_granted": false,
+    "approval_reference": ""
+  },
+  "validation": {
+    "shell": "Python",
+    "command": "from pathlib import Path; import subprocess,sys,tempfile; exe=Path('tools/Godot_console.exe'); assert exe.is_file(), f'Godot console missing: {exe}'; test=Path(r'tests/test_neural_control_outage.gd'); assert test.is_file(), 'focused outage regression missing'; log=Path(tempfile.gettempdir())/'birdai-neural-outage-test.log'; r=subprocess.run([str(exe),'--headless','--path','.','--log-file',str(log),'--script','res://tests/test_neural_control_outage.gd'],text=True,capture_output=True,encoding='utf-8',errors='replace',timeout=90); print(r.stdout); print(r.stderr,file=sys.stderr); assert r.returncode==0, f'Godot outage regression failed: {r.returncode}'; print('NEURAL_OUTAGE_REGRESSION: PASS')",
+    "timeout_seconds": 100,
+    "timeout_reason": ""
+  },
+  "max_attempts": {
+    "diagnostic_runs": 1,
+    "validation_runs": 1,
+    "same_strategy_uses": 1
+  },
+  "stop_conditions": [
+    "pass_definition_proven",
+    "second_run_failed_timed_out_or_inconclusive",
+    "strategy_budget_exhausted",
+    "authority_or_scope_conflict",
+    "unrelated_baseline_failure",
+    "deadline_enforcement_unavailable",
+    "cleanup_or_process_termination_unconfirmed"
+  ],
+  "result_schema": ".birdai/execution-result.schema.json"
+}
