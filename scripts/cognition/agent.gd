@@ -441,7 +441,7 @@ func action_family(action: String) -> String:
 		return "SOCIAL"
 	if action in ["preen", "dust_bath"]:
 		return "CARE"
-	if action in ["inspect", "peck", "push", "bite", "hop"]:
+	if action in ["inspect", "peck", "push", "bite", "hop", "scratch"]:
 		return "MANIPULATE"
 	return "EXPLORE"
 
@@ -464,7 +464,9 @@ func neural_inputs() -> Dictionary:
 		"novelty": 0.0,
 		"manipulable": 0.0,
 		"motion": 0.0,
-		"open_space": 0.0
+		"open_space": 0.0,
+		"learned_food_access": 0.0,
+		"substrate_affordance": 0.0
 	}
 	for observation in senses.visible:
 		var id = str(observation.id)
@@ -490,6 +492,11 @@ func neural_inputs() -> Dictionary:
 			var kind = str(world.objects[id].kind)
 			if kind in ["ball", "box", "button", "cache", "treat"]:
 				result.manipulable = maxf(float(result.manipulable), availability)
+	# Learned consequences remain predictions here. They are NOT multiplied by current
+	# hunger/needs in Godot; state-dependent revaluation happens inside NeuralBrain.
+	var learned_affordances = neural_actuator.neural_affordance_inputs(self)
+	result.learned_food_access = clampf(float(learned_affordances.get("learned_food_access", 0.0)), 0.0, 1.0)
+	result.substrate_affordance = clampf(float(learned_affordances.get("substrate_affordance", 0.0)), 0.0, 1.0)
 	return result
 
 func export_data() -> Dictionary:

@@ -44,10 +44,12 @@ func resolve(agent, family: String) -> Dictionary:
 			# actuator choice until spatial target selection is moved into NB.
 			return make_choice(agent, "wander", "ground", family, "NeuralBrain prioriterar utforskning.")
 		"MANIPULATE":
-			var target = nearest_manipulable(agent)
-			if target.is_empty():
+			var resolved = resolve_manipulation(agent)
+			var target = str(resolved.get("target", ""))
+			var action = str(resolved.get("action", ""))
+			if target.is_empty() or action.is_empty():
 				return {}
-			return make_choice(agent, manipulation_primitive(agent, target), target, family, "NeuralBrain prioriterar att undersöka eller påverka ett föremål.")
+			return make_choice(agent, action, target, family, "NeuralBrain prioriterar en möjlig manipulation; resolvern väljer bara vilket synligt affordance-mål som uttrycker beslutet.")
 	return {}
 
 func make_choice(agent, action: String, target: String, family: String, reason: String) -> Dictionary:
@@ -64,6 +66,81 @@ func make_choice(agent, action: String, target: String, family: String, reason: 
 		"controller": "neural",
 		"neural_family": family
 	}
+
+func manipulation_candidates(agent) -> Array:
+	# Candidate construction is deliberately drive-free. It exposes learned
+	# consequences and physical affordances; NeuralBrain decides their current value.
+	var candidates = []
+	for observation in agent.senses.visible:
+		var id = str(observation.id)
+		if not agent.world.objects.has(id):
+			continue
+		var action = manipulation_primitive(agent, id)
+		if action.is_empty():
+			continue
+		var distance = float(observation.distance)
+		var proximity = clampf(1.0 - distance / 6.6, 0.0, 1.0)
+		var availability = 0.30 + proximity * 0.70
+		var context = agent.sensory_context(id)
+		var model = agent.learning.model(id, action, context)
+		var confidence = agent.learning.confidence(id, action, context)
+		var learned_food_access = 0.0
+		if float(model.count) > 0.0:
+			# Preserve the predicted consequence itself. Confidence/reliability reduces
+			# uncertain memories, but no current need is consulted here.
+			var predicted = maxf(0.0, float(model.effects.get("food_access", 0.0)))
+			var reliability = clampf(float(model.success), 0.0, 1.0) * (0.50 + 0.50 * confidence)
+			learned_food_access = clampf(predicted * reliability, 0.0, 1.0)
+		var cues = observation.cues
+		var substrate_physical = minf(float(cues.get("ground", 0.0)), float(cues.get("loose", 0.0)))
+		# Untried loose substrate invites an experiment; repeated neutral scratching
+		# habituates. A later learned food_access consequence can take over.
+		var substrate_uncertainty = 1.0 / (1.0 + float(model.count) * 0.70)
+		var substrate_affordance = substrate_physical * availability * (0.25 + 0.75 * substrate_uncertainty)
+		var kind = str(agent.world.objects[id].kind)
+		var classic = kind in ["ball", "box", "button", "cache", "treat"]
+		candidates.append({
+			"target": id,
+			"action": action,
+			"distance": distance,
+			"availability": availability,
+			"learned_food_access": learned_food_access,
+			"substrate_affordance": substrate_affordance,
+			"classic": classic
+		})
+	return candidates
+
+func neural_affordance_inputs(agent) -> Dictionary:
+	var result = {"learned_food_access": 0.0, "substrate_affordance": 0.0}
+	for candidate in manipulation_candidates(agent):
+		result.learned_food_access = maxf(float(result.learned_food_access), float(candidate.learned_food_access))
+		result.substrate_affordance = maxf(float(result.substrate_affordance), float(candidate.substrate_affordance))
+	return result
+
+func resolve_manipulation(agent) -> Dictionary:
+	var candidates = manipulation_candidates(agent)
+	if candidates.is_empty():
+		return {}
+	# Target resolution is not a second motivational controller. Prefer the visible
+	# candidate carrying the strongest consequence/affordance evidence that NB just
+	# acted on. If none carries such evidence, retain the old nearest-object fallback.
+	var best = {}
+	var best_evidence = 0.0
+	for candidate in candidates:
+		var evidence = maxf(float(candidate.learned_food_access), float(candidate.substrate_affordance))
+		if evidence > best_evidence:
+			best_evidence = evidence
+			best = candidate
+	if not best.is_empty() and best_evidence > 0.01:
+		return best
+	var best_distance = INF
+	for candidate in candidates:
+		if not bool(candidate.classic):
+			continue
+		if float(candidate.distance) < best_distance:
+			best_distance = float(candidate.distance)
+			best = candidate
+	return best
 
 func nearest_visible_with_cue(agent, cue_name: String) -> String:
 	# Pick the observation that contributed the strongest sensory affordance to
@@ -139,30 +216,19 @@ func visible_cue(agent, id: String, cue_name: String) -> float:
 	return 0.0
 
 func nearest_manipulable(agent) -> String:
-	var best_id = ""
-	var best_distance = INF
-	for observation in agent.senses.visible:
-		var id = str(observation.id)
-		if not agent.world.objects.has(id):
-			continue
-		var kind = str(agent.world.objects[id].kind)
-		if kind not in ["ball", "box", "button", "cache", "treat"]:
-			continue
-		var distance = float(observation.distance)
-		if distance < best_distance:
-			best_distance = distance
-			best_id = id
-	return best_id
+	return str(resolve_manipulation(agent).get("target", ""))
 
 func manipulation_primitive(agent, id: String) -> String:
 	if not agent.world.objects.has(id):
-		return "inspect"
+		return ""
+	var cues = agent.memory.objects.get(id, {}).get("cues", {})
+	if float(cues.get("ground", 0.0)) > 0.1 and float(cues.get("loose", 0.0)) > 0.1:
+		return "scratch"
 	match str(agent.world.objects[id].kind):
 		"button":
 			return "peck"
-		"ball":
+		"ball", "box":
 			return "push"
-		"box":
-			return "push"
-		_:
+		"cache", "treat":
 			return "inspect"
+	return ""

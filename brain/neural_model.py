@@ -25,13 +25,20 @@ INPUT_KEYS = (
     "food", "water", "person", "rest_site", "care_site", "novelty",
     "manipulable", "motion", "open_space",
 )
+COGNITIVE_INPUT_KEYS = ("learned_food_access", "substrate_affordance")
+ALL_INPUT_KEYS = INPUT_KEYS + COGNITIVE_INPUT_KEYS
 
 INTEROCEPTIVE_DIMS = 7
-EXTEROCEPTIVE_DIMS = len(INPUT_KEYS) - INTEROCEPTIVE_DIMS
+BASE_INPUT_DIMS = len(INPUT_KEYS)
+EXTEROCEPTIVE_DIMS = BASE_INPUT_DIMS - INTEROCEPTIVE_DIMS
+COGNITIVE_AFFORDANCE_DIMS = len(COGNITIVE_INPUT_KEYS)
 
-# Global input indexes.
+# Original 16 channels retain their exact positions. Cognitive predictions are
+# appended and routed through separate populations rather than widening the old
+# interoceptive/exteroceptive pathways.
 HUNGER, THIRST, REST, EXPLORE, SOCIAL, SAFETY, COMFORT = range(7)
 FOOD, WATER, PERSON, REST_SITE, CARE_SITE, NOVELTY, MANIPULABLE, MOTION, OPEN_SPACE = range(7, 16)
+LEARNED_FOOD_ACCESS, SUBSTRATE_AFFORDANCE = range(16, 18)
 
 # Stable named sub-seeds make anatomical populations reproducible. Adding a new
 # circuit later must not silently re-randomize unrelated pathways or BG.
@@ -49,6 +56,8 @@ _SUBSEED_OFFSETS = {
     "manipulate_motion_ctx": 43, "manipulate_gate_ctx": 44,
     "eval_manipulate_drive": 112, "eval_manipulate_novelty": 113,
     "eval_manipulate_motion": 114, "eval_manipulate_gate": 115,
+    "cognitive_affordances": 45, "manipulate_learned_ctx": 46, "manipulate_substrate_ctx": 47,
+    "eval_manipulate_learned": 116, "eval_manipulate_substrate": 117,
 }
 
 # Temporal commitment is deliberately short. It suppresses 5 Hz decision
@@ -81,7 +90,20 @@ def clamp01(value: float) -> float:
 
 
 def vector_from_mapping(values: Mapping[str, float]) -> np.ndarray:
-    return np.asarray([clamp01(values.get(key, 0.0)) for key in INPUT_KEYS], dtype=float)
+    """Live transport vector: original 16 inputs plus appended cognitive predictions."""
+    return np.asarray([clamp01(values.get(key, 0.0)) for key in ALL_INPUT_KEYS], dtype=float)
+
+
+def _coerce_transport_vector(values: Iterable[float]) -> np.ndarray:
+    """Accept the historical 16D policy contract or the live 18D transport vector."""
+    x = np.asarray(list(values), dtype=float)
+    if x.shape[0] == len(INPUT_KEYS):
+        x = np.concatenate([x, np.zeros(len(COGNITIVE_INPUT_KEYS), dtype=float)])
+    elif x.shape[0] != len(ALL_INPUT_KEYS):
+        raise ValueError(
+            f"expected {len(INPUT_KEYS)} policy or {len(ALL_INPUT_KEYS)} transport inputs, got {x.shape[0]}"
+        )
+    return np.clip(x, 0.0, 1.0)
 
 
 def _suppress(safety: float) -> float:
@@ -198,6 +220,17 @@ def _manipulate_motion_value(x: Sequence[float]) -> float:
     motion, manipulable = np.clip(np.asarray(x, dtype=float), 0.0, 1.0)
     return manipulable * 0.06 * motion
 
+def _learned_food_manipulation_value(x: Sequence[float]) -> float:
+    """Current hunger revalues a learned prediction of future food access."""
+    hunger, learned_food_access, safety = np.clip(np.asarray(x, dtype=float), 0.0, 1.0)
+    return 1.80 * (hunger ** 1.15) * learned_food_access * _suppress(safety)
+
+
+def _substrate_manipulation_value(x: Sequence[float]) -> float:
+    """Hunger makes an unresolved loose-substrate affordance worth testing."""
+    hunger, substrate_affordance, safety = np.clip(np.asarray(x, dtype=float), 0.0, 1.0)
+    return 0.95 * (hunger ** 1.15) * substrate_affordance * _suppress(safety)
+
 
 def _manipulate_safety_gate(x: Sequence[float]) -> float:
     # 0.947 is the algebraic maximum of the original pre-safety formula.
@@ -212,10 +245,7 @@ def affordance_vector(values: Iterable[float]) -> np.ndarray:
     express an action family in the perceived context. EXPLORE remains broadly
     available because orienting/searching does not require a specific object.
     """
-    x = np.asarray(list(values), dtype=float)
-    if x.shape[0] != len(INPUT_KEYS):
-        raise ValueError(f"expected {len(INPUT_KEYS)} inputs, got {x.shape[0]}")
-    x = np.clip(x, 0.0, 1.0)
+    x = _coerce_transport_vector(values)
     search_opportunity = max(
         0.35,
         float(x[OPEN_SPACE]),
@@ -231,7 +261,7 @@ def affordance_vector(values: Iterable[float]) -> np.ndarray:
         x[PERSON],
         x[CARE_SITE],
         search_opportunity,
-        x[MANIPULABLE],
+        max(float(x[MANIPULABLE]), float(x[LEARNED_FOOD_ACCESS]), float(x[SUBSTRATE_AFFORDANCE])),
     ], dtype=float)
 
 
@@ -241,10 +271,7 @@ def valuation(x: Iterable[float]) -> np.ndarray:
     The live Nengo model approximates each pathway independently; this function
     is retained only for self-test, replay diagnostics and decoder error metrics.
     """
-    values = np.asarray(list(x), dtype=float)
-    if values.shape[0] != len(INPUT_KEYS):
-        raise ValueError(f"expected {len(INPUT_KEYS)} inputs, got {values.shape[0]}")
-    values = np.clip(values, 0.0, 1.0)
+    values = _coerce_transport_vector(x)
 
     result = np.asarray(
         [
@@ -258,9 +285,17 @@ def valuation(x: Iterable[float]) -> np.ndarray:
                 values[EXPLORE], values[NOVELTY], values[OPEN_SPACE], values[HUNGER],
                 values[FOOD], values[THIRST], values[WATER], values[SAFETY],
             ]),
-            _manipulate_value([
-                values[EXPLORE], values[NOVELTY], values[MANIPULABLE], values[MOTION], values[SAFETY],
-            ]),
+            (
+                _manipulate_value([
+                    values[EXPLORE], values[NOVELTY], values[MANIPULABLE], values[MOTION], values[SAFETY],
+                ])
+                + _learned_food_manipulation_value([
+                    values[HUNGER], values[LEARNED_FOOD_ACCESS], values[SAFETY],
+                ])
+                + _substrate_manipulation_value([
+                    values[HUNGER], values[SUBSTRATE_AFFORDANCE], values[SAFETY],
+                ])
+            ),
         ],
         dtype=float,
     )
@@ -290,7 +325,7 @@ class NeuralBrain:
         self.nengo = nengo
         self.seed = int(seed)
         self.dt = float(dt)
-        self.input_values = np.zeros(len(INPUT_KEYS), dtype=float)
+        self.input_values = np.zeros(len(ALL_INPUT_KEYS), dtype=float)
         self.commitment_input_values = np.zeros(len(ACTIONS), dtype=float)
         self.temporal = TemporalCommitment(ACTIONS, COMMITMENT_STRENGTH, COMMITMENT_DURATION)
         self._internal_world_time = 0.0
@@ -326,7 +361,7 @@ class NeuralBrain:
             return np.vstack([points, anchors])
 
         with nengo.Network(label="BirdAI NeuralBrain v0.2.6 (reconstructed v0.5.3 lineage)", seed=self.seed) as model:
-            input_node = nengo.Node(lambda _t: self.input_values, size_out=len(INPUT_KEYS), label="Embodied input")
+            input_node = nengo.Node(lambda _t: self.input_values, size_out=len(ALL_INPUT_KEYS), label="Embodied + cognitive input")
             commitment_node = nengo.Node(
                 lambda _t: self.commitment_input_values,
                 size_out=len(ACTIONS),
@@ -349,10 +384,17 @@ class NeuralBrain:
             )
             integrated_state = nengo.Ensemble(
                 n_neurons=1200,
-                dimensions=len(INPUT_KEYS),
-                radius=math.sqrt(len(INPUT_KEYS)),
+                dimensions=BASE_INPUT_DIMS,
+                radius=math.sqrt(BASE_INPUT_DIMS),
                 label="Integrated state / NCL-like association",
                 seed=sub_seed("integrated_state"),
+            )
+            cognitive_affordances = nengo.Ensemble(
+                n_neurons=320,
+                dimensions=COGNITIVE_AFFORDANCE_DIMS,
+                radius=math.sqrt(COGNITIVE_AFFORDANCE_DIMS),
+                label="Learned consequence / substrate affordances",
+                seed=sub_seed("cognitive_affordances"),
             )
             action_values = nengo.Node(size_in=len(ACTIONS), label="Motivation + affordance evidence")
             # Both evidence and state projection are observable. The temporal
@@ -366,9 +408,10 @@ class NeuralBrain:
                 size_out=len(ACTIONS), label="Competition authorized by temporal state")
 
             nengo.Connection(input_node[:INTEROCEPTIVE_DIMS], interoception, synapse=0.01)
-            nengo.Connection(input_node[INTEROCEPTIVE_DIMS:], exteroception, synapse=0.01)
+            nengo.Connection(input_node[INTEROCEPTIVE_DIMS:BASE_INPUT_DIMS], exteroception, synapse=0.01)
+            nengo.Connection(input_node[BASE_INPUT_DIMS:], cognitive_affordances, synapse=0.01)
             nengo.Connection(interoception, integrated_state[:INTEROCEPTIVE_DIMS], synapse=0.015)
-            nengo.Connection(exteroception, integrated_state[INTEROCEPTIVE_DIMS:], synapse=0.015)
+            nengo.Connection(exteroception, integrated_state[INTEROCEPTIVE_DIMS:BASE_INPUT_DIMS], synapse=0.015)
 
             # Dedicated low-dimensional action pathways. Each family sees only the
             # motivational and perceptual variables relevant to its affordance.
@@ -394,6 +437,10 @@ class NeuralBrain:
             manipulate_motion_ctx = nengo.Ensemble(200, 2, radius=math.sqrt(2), label="Manipulate motion and affordance", seed=sub_seed("manipulate_motion_ctx"))
             manipulate_pre = nengo.Node(size_in=1, label="Manipulate subtotal")
             manipulate_gate_ctx = nengo.Ensemble(400, 2, radius=math.sqrt(2), label="Manipulate safety gate", seed=sub_seed("manipulate_gate_ctx"))
+            # Learned consequence and substrate-search evidence are separate from
+            # the historical manipulate gate so its original 0..0.947 domain is unchanged.
+            manipulate_learned_ctx = nengo.Ensemble(360, 3, radius=math.sqrt(3), label="Hunger x learned food-access", seed=sub_seed("manipulate_learned_ctx"))
+            manipulate_substrate_ctx = nengo.Ensemble(360, 3, radius=math.sqrt(3), label="Hunger x loose-substrate affordance", seed=sub_seed("manipulate_substrate_ctx"))
 
             # Reconstructed v0.5.3: action contexts receive decoded intero/extero
             # signals, as in original v0.5. No raw-input context bypass.
@@ -432,6 +479,11 @@ class NeuralBrain:
                 nengo.Connection(exteroception[MANIPULABLE - INTEROCEPTIVE_DIMS], ctx[1], synapse=0.008)
             nengo.Connection(manipulate_pre, manipulate_gate_ctx[0], synapse=0.008)
             nengo.Connection(interoception[SAFETY], manipulate_gate_ctx[1], synapse=0.008)
+            for ctx in (manipulate_learned_ctx, manipulate_substrate_ctx):
+                nengo.Connection(interoception[HUNGER], ctx[0], synapse=0.008)
+                nengo.Connection(interoception[SAFETY], ctx[2], synapse=0.008)
+            nengo.Connection(cognitive_affordances[0], manipulate_learned_ctx[1], synapse=0.008)
+            nengo.Connection(cognitive_affordances[1], manipulate_substrate_ctx[1], synapse=0.008)
 
             nengo.Connection(flee_ctx, action_values[0], function=_flee_value, synapse=0.010, eval_points=eval_points("eval_flee", 2))
             nengo.Connection(drink_ctx, action_values[1], function=_drink_value, synapse=0.010, eval_points=eval_points("eval_drink", 3))
@@ -475,6 +527,12 @@ class NeuralBrain:
             nengo.Connection(manipulate_gate_ctx, action_values[7], function=_manipulate_safety_gate,
                 synapse=0.010, eval_points=eval_points("eval_manipulate_gate", 2),
                 scale_eval_points=False, seed=sub_seed("eval_manipulate_gate"))
+            nengo.Connection(manipulate_learned_ctx, action_values[7], function=_learned_food_manipulation_value,
+                synapse=0.010, eval_points=eval_points("eval_manipulate_learned", 3, 2800),
+                scale_eval_points=False, seed=sub_seed("eval_manipulate_learned"))
+            nengo.Connection(manipulate_substrate_ctx, action_values[7], function=_substrate_manipulation_value,
+                synapse=0.010, eval_points=eval_points("eval_manipulate_substrate", 3, 2800),
+                scale_eval_points=False, seed=sub_seed("eval_manipulate_substrate"))
 
             # Preserve the eight premotor spiking channels and original decay.
             # Mask inactive channels after filtering so stale activity cannot
