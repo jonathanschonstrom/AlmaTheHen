@@ -135,62 +135,95 @@ def _decode_json_object(text: str) -> dict[str, Any] | None:
     return None
 
 
+
 def _extract_qwen_result(
     stdout: str,
 ) -> tuple[str | None, dict[str, Any] | None, str | None]:
+    stripped = stdout.strip()
+    if not stripped:
+        return None, None, None
+
+    events: list[dict[str, Any]] = []
+    parsed_as_event_stream = False
+
     try:
         payload = json.loads(stdout)
     except json.JSONDecodeError:
-        raw = stdout.strip() or None
-        return raw, _decode_json_object(stdout), None
+        for line in stdout.splitlines():
+            candidate = line.strip()
+            if not candidate:
+                continue
+            try:
+                value = json.loads(candidate)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(value, dict):
+                events.append(value)
 
-    result_text: str | None = None
+        if not events:
+            return stripped, _decode_json_object(stdout), None
+
+        parsed_as_event_stream = True
+    else:
+        if isinstance(payload, list):
+            events = [
+                item
+                for item in payload
+                if isinstance(item, dict)
+            ]
+            parsed_as_event_stream = True
+        elif isinstance(payload, dict):
+            events = [payload]
+        else:
+            return stripped, _decode_json_object(stdout), None
+
     model: str | None = None
+    for item in events:
+        if (
+            item.get("type") == "system"
+            and item.get("subtype") in {"session_start", "init"}
+            and isinstance(item.get("model"), str)
+        ):
+            model = item["model"]
+            break
 
-    if isinstance(payload, list):
-        for item in payload:
-            if (
-                isinstance(item, dict)
-                and item.get("type") == "system"
-                and item.get("subtype") in {"session_start", "init"}
-                and isinstance(item.get("model"), str)
-            ):
-                model = item["model"]
+    if model is None:
+        for item in events:
+            candidate_model = item.get("model")
+            if isinstance(candidate_model, str):
+                model = candidate_model
                 break
 
-        for item in reversed(payload):
-            if isinstance(item, dict) and item.get("type") == "result":
-                structured = item.get("structured_result")
-                if isinstance(structured, dict):
-                    return json.dumps(structured), structured, model
+    for item in reversed(events):
+        if item.get("type") != "result":
+            continue
 
-                candidate = item.get("result")
-                if isinstance(candidate, str):
-                    result_text = candidate
-                    break
-                if isinstance(candidate, dict):
-                    return json.dumps(candidate), candidate, model
-
-    if result_text is None and isinstance(payload, dict):
-        structured = payload.get("structured_result")
+        structured = item.get("structured_result")
         if isinstance(structured, dict):
             return json.dumps(structured), structured, model
 
-        candidate = payload.get("result")
-        if isinstance(candidate, str):
-            result_text = candidate
-        elif isinstance(candidate, dict):
+        candidate = item.get("result")
+        if isinstance(candidate, dict):
             return json.dumps(candidate), candidate, model
+        if isinstance(candidate, str):
+            return candidate, _decode_json_object(candidate), model
 
-        candidate_model = payload.get("model")
-        if isinstance(candidate_model, str):
-            model = candidate_model
+    if len(events) == 1 and not parsed_as_event_stream:
+        item = events[0]
 
-    if result_text is None:
-        result_text = stdout.strip() or None
+        structured = item.get("structured_result")
+        if isinstance(structured, dict):
+            return json.dumps(structured), structured, model
 
-    contract = _decode_json_object(result_text or "")
-    return result_text, contract, model
+        candidate = item.get("result")
+        if isinstance(candidate, dict):
+            return json.dumps(candidate), candidate, model
+        if isinstance(candidate, str):
+            return candidate, _decode_json_object(candidate), model
+
+        return stripped, _decode_json_object(stripped), model
+
+    return stripped, None, model
 
 
 def _terminate_tree(process: subprocess.Popen[str]) -> bool:
@@ -696,7 +729,8 @@ class QwenAdapter:
             "--json-schema",
             json.dumps(QWEN_RESULT_SCHEMA, separators=(",", ":")),
             "--output-format",
-            "json",
+            "stream-json",
+            "--include-partial-messages",
             "--approval-mode",
             "auto-edit",
             "--max-session-turns",
