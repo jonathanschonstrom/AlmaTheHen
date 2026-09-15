@@ -1046,6 +1046,7 @@ def main() -> int:
     candidate_changes: list[str] = []
     unsafe_symlinks: list[str] = []
     rollback_performed = False
+    backend_error_type = QwenAdapterError
 
     authority = task.get("authority", {})
     authority_required = (
@@ -1073,7 +1074,9 @@ def main() -> int:
 
             backend = task.get("execution_backend", "qwen")
             if backend == "lmstudio":
+                from execution_backend import ExecutionBackendError
                 from lmstudio_adapter import LMStudioAdapter
+                backend_error_type = ExecutionBackendError
 
                 adapter = LMStudioAdapter(
                     model=args.qwen_model or None,
@@ -1206,7 +1209,7 @@ def main() -> int:
                         "authoritative task validation exited 0",
                         f"pass definition: {task['goal']['pass_definition']}",
                     ]
-    except QwenAdapterError as exc:
+    except backend_error_type as exc:
         block_reason = str(exc)
 
     if status == "BLOCKED":

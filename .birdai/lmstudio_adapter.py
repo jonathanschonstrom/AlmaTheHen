@@ -10,10 +10,10 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-from qwen_adapter import ProcessRecord, QwenAdapterError, QwenExecution
+from execution_backend import ExecutionBackendError, ExecutionResult, ProcessRecord
 
 
-class LMStudioAdapterError(QwenAdapterError):
+class LMStudioAdapterError(ExecutionBackendError):
     pass
 
 
@@ -560,7 +560,7 @@ class LMStudioAdapter:
         task: dict[str, Any],
         cwd: Path,
         output_dir: Path,
-    ) -> QwenExecution:
+    ) -> ExecutionResult:
         output_dir.mkdir(
             parents=True,
             exist_ok=True,
@@ -674,7 +674,7 @@ class LMStudioAdapter:
             stderr_path=stderr_path,
         )
 
-        return QwenExecution(
+        return ExecutionResult(
             process=process,
             contract=proposal,
             raw_result=content,
