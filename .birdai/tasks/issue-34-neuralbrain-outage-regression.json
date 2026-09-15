@@ -34,8 +34,27 @@
     "cleanup_or_process_termination_unconfirmed"
   ],
   "result_schema": ".birdai/execution-result.schema.json",
-  "context_files": [
-    "tests/run_tests.gd",
-    "scripts/cognition/agent.gd"
+  "context_files": [],
+  "context_ranges": [
+    {
+      "path": "tests/run_tests.gd",
+      "start_line": 1,
+      "end_line": 18
+    },
+    {
+      "path": "tests/run_tests.gd",
+      "start_line": 172,
+      "end_line": 196
+    },
+    {
+      "path": "scripts/cognition/agent.gd",
+      "start_line": 128,
+      "end_line": 165
+    },
+    {
+      "path": "scripts/cognition/agent.gd",
+      "start_line": 373,
+      "end_line": 411
+    }
   ]
 }

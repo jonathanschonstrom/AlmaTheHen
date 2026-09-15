@@ -351,6 +351,7 @@ def _version(executable: str) -> str:
 
 MAX_CONTEXT_FILE_BYTES = 192 * 1024
 MAX_CONTEXT_TOTAL_BYTES = 384 * 1024
+MAX_CONTEXT_RANGE_LINES = 250
 
 
 def _normalize_context_path(value: Any) -> str:
@@ -450,8 +451,123 @@ def _load_context_files(
     return loaded
 
 
+
+def _load_context_ranges(
+    task: dict[str, Any],
+    cwd: Path,
+) -> list[tuple[str, str]]:
+    raw = task.get("context_ranges", [])
+    if raw is None:
+        raw = []
+    if not isinstance(raw, list):
+        raise QwenAdapterError("AI_TASK context_ranges must be an array")
+
+    allowed = {
+        _normalize_context_path(value)
+        for value in task.get("allowed_files", [])
+    }
+    root = cwd.resolve()
+    loaded: list[tuple[str, str]] = []
+    seen: set[tuple[str, int, int]] = set()
+
+    for item in raw:
+        if not isinstance(item, dict):
+            raise QwenAdapterError(
+                "AI_TASK context_ranges entries must be objects"
+            )
+        if set(item) != {"path", "start_line", "end_line"}:
+            raise QwenAdapterError(
+                "AI_TASK context_ranges entries require exactly "
+                "path, start_line, and end_line"
+            )
+
+        relative = _normalize_context_path(item["path"])
+        start = item["start_line"]
+        end = item["end_line"]
+
+        if (
+            isinstance(start, bool)
+            or isinstance(end, bool)
+            or not isinstance(start, int)
+            or not isinstance(end, int)
+            or start < 1
+            or end < start
+        ):
+            raise QwenAdapterError(
+                f"Invalid context range for {relative}: {start}-{end}"
+            )
+
+        if end - start + 1 > MAX_CONTEXT_RANGE_LINES:
+            raise QwenAdapterError(
+                f"Context range exceeds {MAX_CONTEXT_RANGE_LINES} lines: "
+                f"{relative}:{start}-{end}"
+            )
+
+        if relative in allowed:
+            raise QwenAdapterError(
+                "AI_TASK context_ranges are read-only and cannot overlap "
+                f"allowed_files: {relative}"
+            )
+
+        key = (relative, start, end)
+        if key in seen:
+            raise QwenAdapterError(
+                f"Duplicate context range: {relative}:{start}-{end}"
+            )
+        seen.add(key)
+
+        candidate = root / relative
+        try:
+            resolved = candidate.resolve(strict=True)
+        except FileNotFoundError as exc:
+            raise QwenAdapterError(
+                f"Context range file does not exist: {relative}"
+            ) from exc
+
+        try:
+            resolved.relative_to(root)
+        except ValueError as exc:
+            raise QwenAdapterError(
+                f"Context range resolves outside repository workspace: "
+                f"{relative}"
+            ) from exc
+
+        if not resolved.is_file():
+            raise QwenAdapterError(
+                f"Context range path is not a regular file: {relative}"
+            )
+
+        try:
+            source = resolved.read_text(encoding="utf-8")
+        except UnicodeDecodeError as exc:
+            raise QwenAdapterError(
+                f"Context range file is not valid UTF-8 text: {relative}"
+            ) from exc
+
+        lines = source.splitlines()
+        if end > len(lines):
+            raise QwenAdapterError(
+                f"Context range exceeds file length {len(lines)}: "
+                f"{relative}:{start}-{end}"
+            )
+
+        content = "\n".join(lines[start - 1:end]) + "\n"
+        loaded.append((f"{relative}:{start}-{end}", content))
+
+    return loaded
+
+
 def _render_context_files(task: dict[str, Any], cwd: Path) -> str:
     loaded = _load_context_files(task, cwd)
+    loaded.extend(_load_context_ranges(task, cwd))
+    total_bytes = sum(
+        len(content.encode('utf-8'))
+        for _label, content in loaded
+    )
+    if total_bytes > MAX_CONTEXT_TOTAL_BYTES:
+        raise QwenAdapterError(
+            f'Combined context exceeds {MAX_CONTEXT_TOTAL_BYTES} bytes'
+        )
     if not loaded:
         return "No repository files were preloaded by the coordinator."
 
