@@ -125,6 +125,74 @@ def validate_task(task: dict[str, Any]) -> None:
         )
 
 
+    context_ranges = task.get("context_ranges", [])
+    if context_ranges is None:
+        context_ranges = []
+    if not isinstance(context_ranges, list):
+        raise ExecutionError("AI_TASK context_ranges must be an array")
+
+    seen_ranges: set[tuple[str, int, int]] = set()
+    ranges_by_path: dict[str, list[tuple[int, int]]] = {}
+
+    for item in context_ranges:
+        if not isinstance(item, dict):
+            raise ExecutionError(
+                "AI_TASK context_ranges entries must be objects"
+            )
+        if set(item) != {"path", "start_line", "end_line"}:
+            raise ExecutionError(
+                "AI_TASK context_ranges entries require exactly "
+                "path, start_line, and end_line"
+            )
+
+        path = normalize_repo_path(str(item["path"]))
+        start = item["start_line"]
+        end = item["end_line"]
+
+        if (
+            isinstance(start, bool)
+            or isinstance(end, bool)
+            or not isinstance(start, int)
+            or not isinstance(end, int)
+            or start < 1
+            or end < start
+        ):
+            raise ExecutionError(
+                f"Invalid context range for {path}: {start}-{end}"
+            )
+
+        if end - start + 1 > 250:
+            raise ExecutionError(
+                f"AI_TASK context range exceeds 250 lines: "
+                f"{path}:{start}-{end}"
+            )
+
+        if path in normalized:
+            raise ExecutionError(
+                "AI_TASK context_ranges are read-only and cannot overlap "
+                f"allowed_files: {path}"
+            )
+
+        key = (path, start, end)
+        if key in seen_ranges:
+            raise ExecutionError(
+                f"AI_TASK context_ranges contains duplicate: "
+                f"{path}:{start}-{end}"
+            )
+        seen_ranges.add(key)
+        ranges_by_path.setdefault(path, []).append((start, end))
+
+    for path, ranges in ranges_by_path.items():
+        ranges.sort()
+        previous_end = 0
+        for start, end in ranges:
+            if start <= previous_end:
+                raise ExecutionError(
+                    f"AI_TASK context_ranges overlap for {path}"
+                )
+            previous_end = end
+
+
     authority = task.get("authority", {})
     if authority:
         if not isinstance(authority, dict):

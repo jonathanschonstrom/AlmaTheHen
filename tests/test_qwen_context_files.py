@@ -127,20 +127,13 @@ class ContextFilesTests(unittest.TestCase):
 
     def test_issue_34_declares_exact_context_and_write_scope(self) -> None:
         payload = json.loads(TASK_PATH.read_text(encoding="utf-8"))
-
-        self.assertEqual(
-            payload.get("context_files"),
-            [
-                "tests/run_tests.gd",
-                "scripts/cognition/agent.gd",
-            ],
-        )
+        self.assertEqual(payload.get("context_files"), [])
         self.assertEqual(
             payload["allowed_files"],
             ["tests/test_neural_control_outage.gd"],
         )
         self.assertTrue(
-            set(payload["context_files"]).isdisjoint(
+            set(payload.get("context_files", [])).isdisjoint(
                 payload["allowed_files"]
             )
         )
