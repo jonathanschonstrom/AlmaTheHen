@@ -112,7 +112,7 @@ func _ready() -> void:
 	add_label(model_column, "Varför detta val?", 21, INK)
 	model_text = rich(model_column)
 	var neural_column = tab_scroll("Neural")
-	add_label(neural_column, "NeuralBrain v0.2.6 · BG100 · neural actuator control · utility reference only", 21, INK)
+	add_label(neural_column, "NeuralBrain v0.2.7 · BG100 · neural actuator control · utility reference only", 21, INK)
 	neural_text = rich(neural_column)
 	controls = PanelContainer.new()
 	controls.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)

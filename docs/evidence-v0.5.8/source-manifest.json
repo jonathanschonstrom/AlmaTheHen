@@ -1,0 +1,70 @@
+{
+  "candidate": "BirdAI v0.5.8 / NeuralBrain v0.2.7 BG Readout",
+  "base": "BirdAI v0.5.7 / NeuralBrain v0.2.6 Neural Control",
+  "change": "30 ms mean readout of existing 10 ms-filtered BG output; no policy/competition/BG100 bias-gain/commitment change",
+  "protected_comparison": {
+    "brain/temporal_commitment.py": {
+      "same": true,
+      "sha256": "3424a57ad57bde4e117b92a2d0010dd778ab0d780f77237d1f803ab2630f168e"
+    },
+    "scripts/body/physiology.gd": {
+      "same": true,
+      "sha256": "30cfb679c60333b7e7ded6f642cbbfa5f87fa5da75b9eff37238985c982ab368"
+    },
+    "scripts/cognition/homeostasis.gd": {
+      "same": true,
+      "sha256": "d761f5856fd0760d8417b3dbadf569bd4ec85cfa0912c5bc77eb793c4e7cbcf7"
+    },
+    "scripts/cognition/utility.gd": {
+      "same": true,
+      "sha256": "d26976dd0051a47834a44abfb1f9fdd93b626fbda92943e1357a4d4f6d8e0906"
+    },
+    "scripts/cognition/learning.gd": {
+      "same": true,
+      "sha256": "42803d0c32788065093720114fd1de6a851bf45329517d717841fc81de4624f6"
+    },
+    "scripts/cognition/memory.gd": {
+      "same": true,
+      "sha256": "83a6191f94812883ff370699dd14e47db858bd78a80c02cb994fc1dc2a569d81"
+    },
+    "scripts/cognition/perception.gd": {
+      "same": true,
+      "sha256": "08d3f9e61b5831884953c7462e8a5f352740780c1cfdcc3f4baeb20c8aa30dbd"
+    },
+    "scripts/world/world_state.gd": {
+      "same": true,
+      "sha256": "c26c5e1ffda35d484f8d1b19584212c428fe07e7e50c23b1e6cfdbe31f38b8b1"
+    },
+    "scripts/persistence.gd": {
+      "same": true,
+      "sha256": "9483c66ec0e256d8485e0d2fb87780faa8fcdd265ac719268e72df2bfc64be68"
+    },
+    "scripts/cognition/agent.gd": {
+      "same": true,
+      "sha256": "f07565ac66d5f3b816f04875dead52c00514d304a0e9434cad79edfbcc44436b"
+    },
+    "scripts/cognition/neural_action_resolver.gd": {
+      "same": true,
+      "sha256": "b73473232739cecf83bcb5357ef6cc77b434e8e0a944e62b6a2c49915f510b12"
+    }
+  },
+  "changed_files": [
+    "Installera NeuralBrain.cmd",
+    "UPPDATERA-FRAN-v0.5.7.txt",
+    "VERSION.txt",
+    "README.md",
+    "Kor NeuralBrain-regression.cmd",
+    "RAPPORT-v0.5.8.md",
+    "Kor NeuralBrain-v0.2.7-robusthet.cmd",
+    "Kor NeuralBrain-test.cmd",
+    "NEURALBRAIN-v0.2.7.md",
+    "brain/neural_model.py",
+    "brain/brain_server.py",
+    "brain/README.md",
+    "brain/robustness_v027.py",
+    "brain/test_regressions_v027.py",
+    "brain/selftest.py",
+    "scripts/view/inspector.gd",
+    "scripts/cognition/neural_brain_bridge.gd"
+  ]
+}

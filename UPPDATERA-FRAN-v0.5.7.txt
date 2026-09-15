@@ -1,0 +1,12 @@
+BirdAI v0.5.8 / NeuralBrain v0.2.7 - uppdatering från v0.5.7
+
+Kopiera update-paketets innehåll över en separat kopia av v0.5.7 Neural Control.
+Behåll brain\.venv och aktiva sparfiler lokalt; de ingår inte i update-paketet.
+
+Kör därefter:
+1. Kor NeuralBrain-regression.cmd
+2. Kor Neural Control-kontrakt.cmd
+3. Kor NeuralBrain-test.cmd
+4. Kor NeuralBrain-v0.2.7-robusthet.cmd
+
+Godkänn inte kandidaten om de kanoniska Nengo-testerna fortfarande fallerar.

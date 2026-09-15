@@ -1,4 +1,4 @@
-"""Local line-delimited JSON server for BirdAI NeuralBrain v0.2.6 shadow mode."""
+"""Local line-delimited JSON server for BirdAI NeuralBrain v0.2.7 control/shadow mode."""
 from __future__ import annotations
 
 import argparse
@@ -80,6 +80,8 @@ def serve(port: int, seed: int) -> int:
                             "explore_diagnostics": decision.explore_diagnostics,
                             "commitment": decision.commitment,
                             "basal_ganglia": decision.basal_ganglia_output,
+                            "basal_ganglia_instantaneous": decision.basal_ganglia_instantaneous,
+                            "basal_ganglia_readout_window_seconds": decision.basal_ganglia_readout_window_seconds,
                             "sim_time": decision.sim_time,
                             "neurons": brain.estimated_neuron_count,
                         })

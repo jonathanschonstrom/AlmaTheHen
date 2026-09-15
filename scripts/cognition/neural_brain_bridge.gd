@@ -36,7 +36,7 @@ func start(requested_mode: String = "control") -> void:
 		log.store_line(JSON.stringify({
 			"event": "session_start",
 			"mode": mode,
-			"neural_brain": "v0.2.6",
+			"neural_brain": "v0.2.7",
 			"actuator_authority": "utility" if mode == "shadow" else "neural",
 			"port": PORT
 		}))

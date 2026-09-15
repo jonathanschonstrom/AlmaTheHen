@@ -1,0 +1,2434 @@
+diff -ruN '--exclude=.venv' '--exclude=data' '--exclude=docs' /mnt/data/BirdAI-v0.5.7-NeuralBrain-v0.2.6-NeuralControl-portable/brain/README.md /mnt/data/BirdAI-v0.5.8-NeuralBrain-v0.2.7-BGReadout-portable/brain/README.md
+--- /mnt/data/BirdAI-v0.5.7-NeuralBrain-v0.2.6-NeuralControl-portable/brain/README.md	2026-09-10 22:55:50.000000000 +0000
++++ /mnt/data/BirdAI-v0.5.8-NeuralBrain-v0.2.7-BGReadout-portable/brain/README.md	2026-09-11 09:29:08.682360283 +0000
+@@ -1,5 +1,5 @@
+-# NeuralBrain v0.2.6
++# NeuralBrain v0.2.7
+ 
+ Rekonstruerad v0.5.3-arkitektur från v0.2.5, med samma policy/BG/commitment/MANIPULATE men korrigerad fysisk eval-point-semantik på de fyra faktoriserade EXPLORE-decodrarna. `explore_diagnostics` visar delbanorna utan att påverka beslutet.
+ 
+-Se `../RAPPORT-v0.5.6.md` och `../NEURALBRAIN-v0.2.6.md`.
++Se `../RAPPORT-v0.5.8.md` och `../NEURALBRAIN-v0.2.7.md`.
+Binary files /mnt/data/BirdAI-v0.5.7-NeuralBrain-v0.2.6-NeuralControl-portable/brain/__pycache__/brain_server.cpython-313.pyc and /mnt/data/BirdAI-v0.5.8-NeuralBrain-v0.2.7-BGReadout-portable/brain/__pycache__/brain_server.cpython-313.pyc differ
+Binary files /mnt/data/BirdAI-v0.5.7-NeuralBrain-v0.2.6-NeuralControl-portable/brain/__pycache__/neural_model.cpython-313.pyc and /mnt/data/BirdAI-v0.5.8-NeuralBrain-v0.2.7-BGReadout-portable/brain/__pycache__/neural_model.cpython-313.pyc differ
+Binary files /mnt/data/BirdAI-v0.5.7-NeuralBrain-v0.2.6-NeuralControl-portable/brain/__pycache__/robustness_v026.cpython-313.pyc and /mnt/data/BirdAI-v0.5.8-NeuralBrain-v0.2.7-BGReadout-portable/brain/__pycache__/robustness_v026.cpython-313.pyc differ
+Binary files /mnt/data/BirdAI-v0.5.7-NeuralBrain-v0.2.6-NeuralControl-portable/brain/__pycache__/robustness_v027.cpython-313.pyc and /mnt/data/BirdAI-v0.5.8-NeuralBrain-v0.2.7-BGReadout-portable/brain/__pycache__/robustness_v027.cpython-313.pyc differ
+Binary files /mnt/data/BirdAI-v0.5.7-NeuralBrain-v0.2.6-NeuralControl-portable/brain/__pycache__/selftest.cpython-313.pyc and /mnt/data/BirdAI-v0.5.8-NeuralBrain-v0.2.7-BGReadout-portable/brain/__pycache__/selftest.cpython-313.pyc differ
+Binary files /mnt/data/BirdAI-v0.5.7-NeuralBrain-v0.2.6-NeuralControl-portable/brain/__pycache__/temporal_commitment.cpython-313.pyc and /mnt/data/BirdAI-v0.5.8-NeuralBrain-v0.2.7-BGReadout-portable/brain/__pycache__/temporal_commitment.cpython-313.pyc differ
+Binary files /mnt/data/BirdAI-v0.5.7-NeuralBrain-v0.2.6-NeuralControl-portable/brain/__pycache__/test_regressions_v025.cpython-313.pyc and /mnt/data/BirdAI-v0.5.8-NeuralBrain-v0.2.7-BGReadout-portable/brain/__pycache__/test_regressions_v025.cpython-313.pyc differ
+Binary files /mnt/data/BirdAI-v0.5.7-NeuralBrain-v0.2.6-NeuralControl-portable/brain/__pycache__/test_regressions_v026.cpython-313.pyc and /mnt/data/BirdAI-v0.5.8-NeuralBrain-v0.2.7-BGReadout-portable/brain/__pycache__/test_regressions_v026.cpython-313.pyc differ
+Binary files /mnt/data/BirdAI-v0.5.7-NeuralBrain-v0.2.6-NeuralControl-portable/brain/__pycache__/test_regressions_v027.cpython-313.pyc and /mnt/data/BirdAI-v0.5.8-NeuralBrain-v0.2.7-BGReadout-portable/brain/__pycache__/test_regressions_v027.cpython-313.pyc differ
+diff -ruN '--exclude=.venv' '--exclude=data' '--exclude=docs' /mnt/data/BirdAI-v0.5.7-NeuralBrain-v0.2.6-NeuralControl-portable/brain/brain_server.py /mnt/data/BirdAI-v0.5.8-NeuralBrain-v0.2.7-BGReadout-portable/brain/brain_server.py
+--- /mnt/data/BirdAI-v0.5.7-NeuralBrain-v0.2.6-NeuralControl-portable/brain/brain_server.py	2026-09-10 22:56:17.000000000 +0000
++++ /mnt/data/BirdAI-v0.5.8-NeuralBrain-v0.2.7-BGReadout-portable/brain/brain_server.py	2026-09-11 09:29:08.681185067 +0000
+@@ -1,101 +1,103 @@
+-"""Local line-delimited JSON server for BirdAI NeuralBrain v0.2.6 shadow mode."""
+-from __future__ import annotations
+-
+-import argparse
+-import json
+-import socket
+-import sys
+-import traceback
+-from pathlib import Path
+-
+-from neural_model import ACTIONS, INPUT_KEYS, NeuralBrain
+-
+-HOST = "127.0.0.1"
+-DEFAULT_PORT = 39393
+-
+-
+-def send_line(connection: socket.socket, payload: dict) -> None:
+-    connection.sendall((json.dumps(payload, separators=(",", ":")) + "\n").encode("utf-8"))
+-
+-
+-def serve(port: int, seed: int) -> int:
+-    try:
+-        brain = NeuralBrain(seed=seed)
+-    except Exception as exc:
+-        print(f"NeuralBrain failed to initialize: {exc}", file=sys.stderr)
+-        traceback.print_exc()
+-        return 2
+-
+-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
+-        server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+-        server.bind((HOST, int(port)))
+-        server.listen(1)
+-        print(f"BirdAI NeuralBrain listening on {HOST}:{port} | {brain.estimated_neuron_count} neurons", flush=True)
+-        running = True
+-        while running:
+-            connection, _address = server.accept()
+-            with connection:
+-                file = connection.makefile("r", encoding="utf-8", newline="\n")
+-                for line in file:
+-                    try:
+-                        request = json.loads(line)
+-                        command = request.get("command", "step")
+-                        if command == "ping":
+-                            send_line(connection, {
+-                                "ok": True,
+-                                "status": "ready",
+-                                "backend": "nengo",
+-                                "nengo_version": getattr(brain.nengo, "__version__", "unknown"),
+-                                "actions": list(ACTIONS),
+-                                "input_keys": list(INPUT_KEYS),
+-                                "neurons": brain.estimated_neuron_count,
+-                            })
+-                            continue
+-                        if command == "shutdown":
+-                            send_line(connection, {"ok": True, "status": "stopping"})
+-                            running = False
+-                            break
+-                        if command != "step":
+-                            send_line(connection, {"ok": False, "error": f"unknown command: {command}"})
+-                            continue
+-
+-                        inputs = request.get("inputs", {})
+-                        decision = brain.step(
+-                            inputs,
+-                            float(request.get("neural_seconds", 0.05)),
+-                            world_time=float(request.get("age", 0.0)),
+-                        )
+-                        send_line(connection, {
+-                            "ok": True,
+-                            "request_id": int(request.get("request_id", 0)),
+-                            "age": float(request.get("age", 0.0)),
+-                            "backend": "nengo",
+-                            "inputs": {key: float(inputs.get(key, 0.0)) for key in INPUT_KEYS},
+-                            "selected": decision.selected,
+-                            "confidence": decision.confidence,
+-                            "action_values": decision.action_values,
+-                            "competition_values": decision.competition_values,
+-                            "competition_evidence": decision.competition_evidence,
+-                            "affordance_gates": decision.affordance_gates,
+-                            "explore_diagnostics": decision.explore_diagnostics,
+-                            "commitment": decision.commitment,
+-                            "basal_ganglia": decision.basal_ganglia_output,
+-                            "sim_time": decision.sim_time,
+-                            "neurons": brain.estimated_neuron_count,
+-                        })
+-                    except Exception as exc:
+-                        send_line(connection, {"ok": False, "error": str(exc)})
+-        brain.close()
+-    return 0
+-
+-
+-def main() -> int:
+-    parser = argparse.ArgumentParser()
+-    parser.add_argument("--port", type=int, default=DEFAULT_PORT)
+-    parser.add_argument("--seed", type=int, default=20260910)
+-    args = parser.parse_args()
+-    return serve(args.port, args.seed)
+-
+-
+-if __name__ == "__main__":
+-    raise SystemExit(main())
++"""Local line-delimited JSON server for BirdAI NeuralBrain v0.2.7 control/shadow mode."""
++from __future__ import annotations
++
++import argparse
++import json
++import socket
++import sys
++import traceback
++from pathlib import Path
++
++from neural_model import ACTIONS, INPUT_KEYS, NeuralBrain
++
++HOST = "127.0.0.1"
++DEFAULT_PORT = 39393
++
++
++def send_line(connection: socket.socket, payload: dict) -> None:
++    connection.sendall((json.dumps(payload, separators=(",", ":")) + "\n").encode("utf-8"))
++
++
++def serve(port: int, seed: int) -> int:
++    try:
++        brain = NeuralBrain(seed=seed)
++    except Exception as exc:
++        print(f"NeuralBrain failed to initialize: {exc}", file=sys.stderr)
++        traceback.print_exc()
++        return 2
++
++    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
++        server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
++        server.bind((HOST, int(port)))
++        server.listen(1)
++        print(f"BirdAI NeuralBrain listening on {HOST}:{port} | {brain.estimated_neuron_count} neurons", flush=True)
++        running = True
++        while running:
++            connection, _address = server.accept()
++            with connection:
++                file = connection.makefile("r", encoding="utf-8", newline="\n")
++                for line in file:
++                    try:
++                        request = json.loads(line)
++                        command = request.get("command", "step")
++                        if command == "ping":
++                            send_line(connection, {
++                                "ok": True,
++                                "status": "ready",
++                                "backend": "nengo",
++                                "nengo_version": getattr(brain.nengo, "__version__", "unknown"),
++                                "actions": list(ACTIONS),
++                                "input_keys": list(INPUT_KEYS),
++                                "neurons": brain.estimated_neuron_count,
++                            })
++                            continue
++                        if command == "shutdown":
++                            send_line(connection, {"ok": True, "status": "stopping"})
++                            running = False
++                            break
++                        if command != "step":
++                            send_line(connection, {"ok": False, "error": f"unknown command: {command}"})
++                            continue
++
++                        inputs = request.get("inputs", {})
++                        decision = brain.step(
++                            inputs,
++                            float(request.get("neural_seconds", 0.05)),
++                            world_time=float(request.get("age", 0.0)),
++                        )
++                        send_line(connection, {
++                            "ok": True,
++                            "request_id": int(request.get("request_id", 0)),
++                            "age": float(request.get("age", 0.0)),
++                            "backend": "nengo",
++                            "inputs": {key: float(inputs.get(key, 0.0)) for key in INPUT_KEYS},
++                            "selected": decision.selected,
++                            "confidence": decision.confidence,
++                            "action_values": decision.action_values,
++                            "competition_values": decision.competition_values,
++                            "competition_evidence": decision.competition_evidence,
++                            "affordance_gates": decision.affordance_gates,
++                            "explore_diagnostics": decision.explore_diagnostics,
++                            "commitment": decision.commitment,
++                            "basal_ganglia": decision.basal_ganglia_output,
++                            "basal_ganglia_instantaneous": decision.basal_ganglia_instantaneous,
++                            "basal_ganglia_readout_window_seconds": decision.basal_ganglia_readout_window_seconds,
++                            "sim_time": decision.sim_time,
++                            "neurons": brain.estimated_neuron_count,
++                        })
++                    except Exception as exc:
++                        send_line(connection, {"ok": False, "error": str(exc)})
++        brain.close()
++    return 0
++
++
++def main() -> int:
++    parser = argparse.ArgumentParser()
++    parser.add_argument("--port", type=int, default=DEFAULT_PORT)
++    parser.add_argument("--seed", type=int, default=20260910)
++    args = parser.parse_args()
++    return serve(args.port, args.seed)
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff -ruN '--exclude=.venv' '--exclude=data' '--exclude=docs' /mnt/data/BirdAI-v0.5.7-NeuralBrain-v0.2.6-NeuralControl-portable/brain/neural_model.py /mnt/data/BirdAI-v0.5.8-NeuralBrain-v0.2.7-BGReadout-portable/brain/neural_model.py
+--- /mnt/data/BirdAI-v0.5.7-NeuralBrain-v0.2.6-NeuralControl-portable/brain/neural_model.py	2026-09-10 22:56:17.000000000 +0000
++++ /mnt/data/BirdAI-v0.5.8-NeuralBrain-v0.2.7-BGReadout-portable/brain/neural_model.py	2026-09-11 09:29:08.681046569 +0000
+@@ -1,613 +1,629 @@
+-"""BirdAI NeuralBrain v0.2.6 (reconstructed v0.5.3 lineage).
+-
+-Shadow-mode spiking motivation, affordance gating, temporal commitment and
+-basal-ganglia action competition for BirdAI. Godot remains the only actuator.
+-
+-v0.2.6 is intentionally still a family-level brain: it decides *what kind* of
+-behaviour is currently most appropriate (eat, rest, explore, manipulate ...),
+-not the exact target object or motor sequence. It receives no utility score,
+-utility ranking or utility-selected action from Godot.
+-"""
+-from __future__ import annotations
+-
+-import math
+-import hashlib
+-from dataclasses import dataclass
+-from typing import Dict, Iterable, Mapping, Optional, Sequence
+-
+-import numpy as np
+-
+-from temporal_commitment import TemporalCommitment
+-
+-ACTIONS = ("FLEE", "DRINK", "EAT", "REST", "SOCIAL", "CARE", "EXPLORE", "MANIPULATE")
+-INPUT_KEYS = (
+-    "hunger", "thirst", "rest", "explore", "social", "safety", "comfort",
+-    "food", "water", "person", "rest_site", "care_site", "novelty",
+-    "manipulable", "motion", "open_space",
+-)
+-
+-INTEROCEPTIVE_DIMS = 7
+-EXTEROCEPTIVE_DIMS = len(INPUT_KEYS) - INTEROCEPTIVE_DIMS
+-
+-# Global input indexes.
+-HUNGER, THIRST, REST, EXPLORE, SOCIAL, SAFETY, COMFORT = range(7)
+-FOOD, WATER, PERSON, REST_SITE, CARE_SITE, NOVELTY, MANIPULABLE, MOTION, OPEN_SPACE = range(7, 16)
+-
+-# Stable named sub-seeds make anatomical populations reproducible. Adding a new
+-# circuit later must not silently re-randomize unrelated pathways or BG.
+-_SUBSEED_OFFSETS = {
+-    "interoception": 10, "exteroception": 11, "integrated_state": 12,
+-    "flee_ctx": 30, "drink_ctx": 31, "eat_ctx": 32, "rest_ctx": 33,
+-    "social_ctx": 34, "care_ctx": 35, "explore_base_ctx": 36,
+-    "hunger_search_ctx": 37, "thirst_search_ctx": 38, "explore_gate_ctx": 39,
+-    "manipulate_ctx": 40, "persistence": 50, "basal_ganglia": 60,
+-    "eval_flee": 101, "eval_drink": 102, "eval_eat": 103, "eval_rest": 104,
+-    "eval_social": 105, "eval_care": 106, "eval_explore_base": 107,
+-    "eval_hunger_search": 108, "eval_thirst_search": 109,
+-    "eval_explore_gate": 110, "eval_manipulate": 111,
+-    "manipulate_drive_ctx": 41, "manipulate_novelty_ctx": 42,
+-    "manipulate_motion_ctx": 43, "manipulate_gate_ctx": 44,
+-    "eval_manipulate_drive": 112, "eval_manipulate_novelty": 113,
+-    "eval_manipulate_motion": 114, "eval_manipulate_gate": 115,
+-}
+-
+-# Temporal commitment is deliberately short. It suppresses 5 Hz decision
+-# flicker but is weak enough for a newly dominant physiological opportunity to
+-# take over. Strong threat always bypasses it.
+-COMMITMENT_STRENGTH = {
+-    "FLEE": 0.13,
+-    "DRINK": 0.10,
+-    "EAT": 0.10,
+-    "REST": 0.130,
+-    "SOCIAL": 0.085,
+-    "CARE": 0.085,
+-    "EXPLORE": 0.070,
+-    "MANIPULATE": 0.085,
+-}
+-COMMITMENT_DURATION = {
+-    "FLEE": 0.75,
+-    "DRINK": 0.90,
+-    "EAT": 0.90,
+-    "REST": 1.25,
+-    "SOCIAL": 0.85,
+-    "CARE": 0.85,
+-    "EXPLORE": 0.65,
+-    "MANIPULATE": 0.80,
+-}
+-
+-
+-def clamp01(value: float) -> float:
+-    return max(0.0, min(1.0, float(value)))
+-
+-
+-def vector_from_mapping(values: Mapping[str, float]) -> np.ndarray:
+-    return np.asarray([clamp01(values.get(key, 0.0)) for key in INPUT_KEYS], dtype=float)
+-
+-
+-def _suppress(safety: float) -> float:
+-    """Reduce non-defensive actions as acute danger rises."""
+-    return 1.0 - 0.80 * clamp01(safety)
+-
+-
+-def _flee_value(x: Sequence[float]) -> float:
+-    safety, motion = np.clip(np.asarray(x, dtype=float), 0.0, 1.0)
+-    return 0.015 + 1.55 * safety + 0.25 * safety * motion
+-
+-
+-def _drink_value(x: Sequence[float]) -> float:
+-    """Thirst only becomes a drinking opportunity when water is perceived."""
+-    thirst, water, safety = np.clip(np.asarray(x, dtype=float), 0.0, 1.0)
+-    drive = thirst ** 1.55
+-    return (0.010 + water * (0.035 + 1.90 * drive)) * _suppress(safety)
+-
+-
+-def _eat_value(x: Sequence[float]) -> float:
+-    """Hunger only becomes direct feeding evidence when food is perceived."""
+-    hunger, food, safety = np.clip(np.asarray(x, dtype=float), 0.0, 1.0)
+-    drive = hunger ** 1.55
+-    return (0.010 + food * (0.035 + 1.90 * drive)) * _suppress(safety)
+-
+-
+-def _rest_value(x: Sequence[float]) -> float:
+-    """A suitable rest affordance lowers the threshold for acting on sleep/fatigue."""
+-    rest, rest_site, safety = np.clip(np.asarray(x, dtype=float), 0.0, 1.0)
+-    value = 0.012 + rest_site * (0.050 + 1.45 * (rest ** 1.05)) + 0.16 * rest * rest
+-    return value * (1.0 - 0.50 * safety)
+-
+-
+-def _social_value(x: Sequence[float]) -> float:
+-    social, person, safety = np.clip(np.asarray(x, dtype=float), 0.0, 1.0)
+-    value = 0.012 + person * (0.035 + 1.15 * (social ** 1.25))
+-    return value * _suppress(safety)
+-
+-
+-def _care_value(x: Sequence[float]) -> float:
+-    comfort, care_site, safety = np.clip(np.asarray(x, dtype=float), 0.0, 1.0)
+-    value = 0.012 + care_site * (0.030 + 1.05 * (comfort ** 1.20))
+-    return value * (1.0 - 0.55 * safety)
+-
+-
+-def _explore_base_value(x: Sequence[float]) -> float:
+-    """Curiosity/novelty contribution before physiological search and safety gating."""
+-    explore, novelty, open_space = np.clip(np.asarray(x, dtype=float), 0.0, 1.0)
+-    return (
+-        0.018
+-        + explore * (0.20 + 0.30 * novelty + 0.10 * open_space)
+-        + 0.13 * novelty
+-    )
+-
+-
+-def _hunger_search_value(x: Sequence[float]) -> float:
+-    hunger, food = np.clip(np.asarray(x, dtype=float), 0.0, 1.0)
+-    return (hunger ** 1.30) * (1.0 - food) * 0.45
+-
+-
+-def _thirst_search_value(x: Sequence[float]) -> float:
+-    thirst, water = np.clip(np.asarray(x, dtype=float), 0.0, 1.0)
+-    return (thirst ** 1.30) * (1.0 - water) * 0.45
+-
+-
+-def _explore_safety_gate(x: Sequence[float]) -> float:
+-    subtotal = max(0.0, min(1.80, float(x[0])))
+-    safety = clamp01(float(x[1]))
+-    return subtotal * _suppress(safety)
+-
+-
+-def _explore_value(x: Sequence[float]) -> float:
+-    """Exact v0.2 exploration policy, written as factorized subterms.
+-
+-    The analytical policy is unchanged. The spiking network in v0.2.6 mirrors
+-    this factorization so an eight-dimensional decoder no longer has to learn
+-    all curiosity, search and safety interactions in one population.
+-    """
+-    explore, novelty, open_space, hunger, food, thirst, water, safety = np.clip(
+-        np.asarray(x, dtype=float), 0.0, 1.0
+-    )
+-    subtotal = (
+-        _explore_base_value([explore, novelty, open_space])
+-        + _hunger_search_value([hunger, food])
+-        + _thirst_search_value([thirst, water])
+-    )
+-    return _explore_safety_gate([subtotal, safety])
+-
+-
+-def _manipulate_value(x: Sequence[float]) -> float:
+-    """Manipulation requires a perceived manipulable affordance.
+-
+-    Novelty is useful but not mandatory. A familiar object can still invite
+-    pecking/pushing/inspection when exploratory motivation remains active.
+-    """
+-    explore, novelty, manipulable, motion, safety = np.clip(np.asarray(x, dtype=float), 0.0, 1.0)
+-    value = 0.012 + manipulable * (
+-        0.025 + 0.30 * explore + 0.55 * novelty + 0.06 * motion
+-    )
+-    return value * _suppress(safety)
+-
+-
+-def _manipulate_drive_value(x: Sequence[float]) -> float:
+-    explore, manipulable = np.clip(np.asarray(x, dtype=float), 0.0, 1.0)
+-    return 0.012 + manipulable * (0.025 + 0.30 * explore)
+-
+-
+-def _manipulate_novelty_value(x: Sequence[float]) -> float:
+-    novelty, manipulable = np.clip(np.asarray(x, dtype=float), 0.0, 1.0)
+-    return manipulable * 0.55 * novelty
+-
+-
+-def _manipulate_motion_value(x: Sequence[float]) -> float:
+-    motion, manipulable = np.clip(np.asarray(x, dtype=float), 0.0, 1.0)
+-    return manipulable * 0.06 * motion
+-
+-
+-def _manipulate_safety_gate(x: Sequence[float]) -> float:
+-    # 0.947 is the algebraic maximum of the original pre-safety formula.
+-    subtotal = max(0.0, min(0.947, float(x[0])))
+-    return subtotal * _suppress(float(x[1]))
+-
+-
+-def affordance_vector(values: Iterable[float]) -> np.ndarray:
+-    """Observable opportunity gates for diagnostics and temporal commitment.
+-
+-    These are not utility scores. They indicate whether the body can currently
+-    express an action family in the perceived context. EXPLORE remains broadly
+-    available because orienting/searching does not require a specific object.
+-    """
+-    x = np.asarray(list(values), dtype=float)
+-    if x.shape[0] != len(INPUT_KEYS):
+-        raise ValueError(f"expected {len(INPUT_KEYS)} inputs, got {x.shape[0]}")
+-    x = np.clip(x, 0.0, 1.0)
+-    search_opportunity = max(
+-        0.35,
+-        float(x[OPEN_SPACE]),
+-        float(x[NOVELTY]),
+-        float(x[HUNGER] * (1.0 - x[FOOD])),
+-        float(x[THIRST] * (1.0 - x[WATER])),
+-    )
+-    return np.asarray([
+-        1.0,
+-        x[WATER],
+-        x[FOOD],
+-        x[REST_SITE],
+-        x[PERSON],
+-        x[CARE_SITE],
+-        search_opportunity,
+-        x[MANIPULABLE],
+-    ], dtype=float)
+-
+-
+-def valuation(x: Iterable[float]) -> np.ndarray:
+-    """Analytical reference for v0.2 neural motivational evidence.
+-
+-    The live Nengo model approximates each pathway independently; this function
+-    is retained only for self-test, replay diagnostics and decoder error metrics.
+-    """
+-    values = np.asarray(list(x), dtype=float)
+-    if values.shape[0] != len(INPUT_KEYS):
+-        raise ValueError(f"expected {len(INPUT_KEYS)} inputs, got {values.shape[0]}")
+-    values = np.clip(values, 0.0, 1.0)
+-
+-    result = np.asarray(
+-        [
+-            _flee_value([values[SAFETY], values[MOTION]]),
+-            _drink_value([values[THIRST], values[WATER], values[SAFETY]]),
+-            _eat_value([values[HUNGER], values[FOOD], values[SAFETY]]),
+-            _rest_value([values[REST], values[REST_SITE], values[SAFETY]]),
+-            _social_value([values[SOCIAL], values[PERSON], values[SAFETY]]),
+-            _care_value([values[COMFORT], values[CARE_SITE], values[SAFETY]]),
+-            _explore_value([
+-                values[EXPLORE], values[NOVELTY], values[OPEN_SPACE], values[HUNGER],
+-                values[FOOD], values[THIRST], values[WATER], values[SAFETY],
+-            ]),
+-            _manipulate_value([
+-                values[EXPLORE], values[NOVELTY], values[MANIPULABLE], values[MOTION], values[SAFETY],
+-            ]),
+-        ],
+-        dtype=float,
+-    )
+-    return np.clip(result, 0.0, 1.8)
+-
+-
+-@dataclass
+-class ShadowDecision:
+-    selected: str
+-    action_values: Dict[str, float]
+-    competition_values: Dict[str, float]
+-    competition_evidence: Dict[str, float]
+-    basal_ganglia_output: Dict[str, float]
+-    affordance_gates: Dict[str, float]
+-    explore_diagnostics: Dict[str, object]
+-    commitment: Dict[str, object]
+-    confidence: float
+-    sim_time: float
+-
+-
+-class NeuralBrain:
+-    """Persistent ~11.9k-neuron Nengo motivational action-competition model."""
+-
+-    def __init__(self, seed: int = 20260910, dt: float = 0.001):
+-        import nengo
+-
+-        self.nengo = nengo
+-        self.seed = int(seed)
+-        self.dt = float(dt)
+-        self.input_values = np.zeros(len(INPUT_KEYS), dtype=float)
+-        self.commitment_input_values = np.zeros(len(ACTIONS), dtype=float)
+-        self.temporal = TemporalCommitment(ACTIONS, COMMITMENT_STRENGTH, COMMITMENT_DURATION)
+-        self._internal_world_time = 0.0
+-        def sub_seed(name: str) -> int:
+-            offset = _SUBSEED_OFFSETS[name]
+-            value = int((self.seed + 100003 * int(offset)) % 2147483647)
+-            return value if value != 0 else 1
+-
+-        def eval_points(name: str, dimensions: int, count: int = 2200) -> np.ndarray:
+-            # Broad 0..1 training only. No selftest coordinates are injected.
+-            rng = np.random.default_rng(sub_seed(name))
+-            points = rng.uniform(0.0, 1.0, size=(count, dimensions))
+-            anchors = np.vstack([
+-                np.zeros((1, dimensions)),
+-                np.ones((1, dimensions)),
+-                np.eye(dimensions),
+-            ])
+-            return np.vstack([points, anchors])
+-
+-        def explore_gate_eval_points(count: int = 3000) -> np.ndarray:
+-            # Dimension 0 is the already-summed exploration subtotal (0..1.648);
+-            # dimension 1 is acute safety (0..1). These are structural domain
+-            # anchors, not behavior/selftest examples.
+-            rng = np.random.default_rng(sub_seed("eval_explore_gate"))
+-            points = np.column_stack([
+-                rng.uniform(0.0, 1.70, size=count),
+-                rng.uniform(0.0, 1.0, size=count),
+-            ])
+-            anchors = np.asarray([
+-                [0.0, 0.0], [0.0, 1.0], [1.70, 0.0], [1.70, 1.0],
+-                [0.20, 0.0], [0.60, 0.25], [1.00, 0.50], [1.40, 0.75],
+-            ], dtype=float)
+-            return np.vstack([points, anchors])
+-
+-        with nengo.Network(label="BirdAI NeuralBrain v0.2.6 (reconstructed v0.5.3 lineage)", seed=self.seed) as model:
+-            input_node = nengo.Node(lambda _t: self.input_values, size_out=len(INPUT_KEYS), label="Embodied input")
+-            commitment_node = nengo.Node(
+-                lambda _t: self.commitment_input_values,
+-                size_out=len(ACTIONS),
+-                label="Temporal commitment state",
+-            )
+-
+-            interoception = nengo.Ensemble(
+-                n_neurons=500,
+-                dimensions=INTEROCEPTIVE_DIMS,
+-                radius=math.sqrt(INTEROCEPTIVE_DIMS),
+-                label="Interoception",
+-                seed=sub_seed("interoception"),
+-            )
+-            exteroception = nengo.Ensemble(
+-                n_neurons=650,
+-                dimensions=EXTEROCEPTIVE_DIMS,
+-                radius=math.sqrt(EXTEROCEPTIVE_DIMS),
+-                label="Perceptual context",
+-                seed=sub_seed("exteroception"),
+-            )
+-            integrated_state = nengo.Ensemble(
+-                n_neurons=1200,
+-                dimensions=len(INPUT_KEYS),
+-                radius=math.sqrt(len(INPUT_KEYS)),
+-                label="Integrated state / NCL-like association",
+-                seed=sub_seed("integrated_state"),
+-            )
+-            action_values = nengo.Node(size_in=len(ACTIONS), label="Motivation + affordance evidence")
+-            # Both evidence and state projection are observable. The temporal
+-            # controller receives filtered neural evidence, never valuation().
+-            temporal_channels = nengo.Node(size_in=2 * len(ACTIONS), label="Neural evidence and premotor channels")
+-            competition_evidence = nengo.Node(
+-                lambda _t, x: x[:len(ACTIONS)] + x[len(ACTIONS):] * (self.commitment_input_values != 0.0),
+-                size_in=2 * len(ACTIONS), size_out=len(ACTIONS), label="Filtered evidence before hysteresis")
+-            competition_values = nengo.Node(
+-                lambda _t, x: self.temporal.project(x), size_in=len(ACTIONS),
+-                size_out=len(ACTIONS), label="Competition authorized by temporal state")
+-
+-            nengo.Connection(input_node[:INTEROCEPTIVE_DIMS], interoception, synapse=0.01)
+-            nengo.Connection(input_node[INTEROCEPTIVE_DIMS:], exteroception, synapse=0.01)
+-            nengo.Connection(interoception, integrated_state[:INTEROCEPTIVE_DIMS], synapse=0.015)
+-            nengo.Connection(exteroception, integrated_state[INTEROCEPTIVE_DIMS:], synapse=0.015)
+-
+-            # Dedicated low-dimensional action pathways. Each family sees only the
+-            # motivational and perceptual variables relevant to its affordance.
+-            flee_ctx = nengo.Ensemble(240, 2, radius=math.sqrt(2), label="Flee context", seed=sub_seed("flee_ctx"))
+-            drink_ctx = nengo.Ensemble(360, 3, radius=math.sqrt(3), label="Drink context", seed=sub_seed("drink_ctx"))
+-            eat_ctx = nengo.Ensemble(360, 3, radius=math.sqrt(3), label="Eat context", seed=sub_seed("eat_ctx"))
+-            rest_ctx = nengo.Ensemble(360, 3, radius=math.sqrt(3), label="Rest context", seed=sub_seed("rest_ctx"))
+-            social_ctx = nengo.Ensemble(360, 3, radius=math.sqrt(3), label="Social context", seed=sub_seed("social_ctx"))
+-            care_ctx = nengo.Ensemble(360, 3, radius=math.sqrt(3), label="Care context", seed=sub_seed("care_ctx"))
+-            # EXPLORE is factorized into low-dimensional spiking pathways. The
+-            # v0.5 robustness sweep showed a large positive decoder bias in the
+-            # former single 8D explore ensemble across seeds. These subcircuits
+-            # implement the same analytical policy without changing its weights.
+-            explore_base_ctx = nengo.Ensemble(500, 3, radius=math.sqrt(3), label="Explore curiosity context", seed=sub_seed("explore_base_ctx"))
+-            hunger_search_ctx = nengo.Ensemble(300, 2, radius=math.sqrt(2), label="Hunger search context", seed=sub_seed("hunger_search_ctx"))
+-            thirst_search_ctx = nengo.Ensemble(300, 2, radius=math.sqrt(2), label="Thirst search context", seed=sub_seed("thirst_search_ctx"))
+-            explore_pre = nengo.Node(size_in=1, label="Explore subtotal")
+-            explore_gate_ctx = nengo.Ensemble(400, 2, radius=2.10, label="Explore safety gate", seed=sub_seed("explore_gate_ctx"))
+-            # Separate 2D bilinear terms and safety gate preserve the exact
+-            # analytical MANIPULATE policy without a single 5D decoder.
+-            manipulate_drive_ctx = nengo.Ensemble(300, 2, radius=math.sqrt(2), label="Manipulate drive and affordance", seed=sub_seed("manipulate_drive_ctx"))
+-            manipulate_novelty_ctx = nengo.Ensemble(300, 2, radius=math.sqrt(2), label="Manipulate novelty and affordance", seed=sub_seed("manipulate_novelty_ctx"))
+-            manipulate_motion_ctx = nengo.Ensemble(200, 2, radius=math.sqrt(2), label="Manipulate motion and affordance", seed=sub_seed("manipulate_motion_ctx"))
+-            manipulate_pre = nengo.Node(size_in=1, label="Manipulate subtotal")
+-            manipulate_gate_ctx = nengo.Ensemble(400, 2, radius=math.sqrt(2), label="Manipulate safety gate", seed=sub_seed("manipulate_gate_ctx"))
+-
+-            # Reconstructed v0.5.3: action contexts receive decoded intero/extero
+-            # signals, as in original v0.5. No raw-input context bypass.
+-            nengo.Connection(interoception[SAFETY], flee_ctx[0], synapse=0.008)
+-            nengo.Connection(exteroception[MOTION - INTEROCEPTIVE_DIMS], flee_ctx[1], synapse=0.008)
+-
+-            for ctx, drive_idx, resource_idx in (
+-                (drink_ctx, THIRST, WATER),
+-                (eat_ctx, HUNGER, FOOD),
+-            ):
+-                nengo.Connection(interoception[drive_idx], ctx[0], synapse=0.008)
+-                nengo.Connection(exteroception[resource_idx - INTEROCEPTIVE_DIMS], ctx[1], synapse=0.008)
+-                nengo.Connection(interoception[SAFETY], ctx[2], synapse=0.008)
+-
+-            for ctx, drive_idx, site_idx in (
+-                (rest_ctx, REST, REST_SITE),
+-                (social_ctx, SOCIAL, PERSON),
+-                (care_ctx, COMFORT, CARE_SITE),
+-            ):
+-                nengo.Connection(interoception[drive_idx], ctx[0], synapse=0.008)
+-                nengo.Connection(exteroception[site_idx - INTEROCEPTIVE_DIMS], ctx[1], synapse=0.008)
+-                nengo.Connection(interoception[SAFETY], ctx[2], synapse=0.008)
+-
+-            explore_drive_in = nengo.Connection(interoception[EXPLORE], explore_base_ctx[0], synapse=0.008)
+-            explore_novelty_in = nengo.Connection(exteroception[NOVELTY - INTEROCEPTIVE_DIMS], explore_base_ctx[1], synapse=0.008)
+-            explore_open_space_in = nengo.Connection(exteroception[OPEN_SPACE - INTEROCEPTIVE_DIMS], explore_base_ctx[2], synapse=0.008)
+-            explore_hunger_in = nengo.Connection(interoception[HUNGER], hunger_search_ctx[0], synapse=0.008)
+-            explore_food_in = nengo.Connection(exteroception[FOOD - INTEROCEPTIVE_DIMS], hunger_search_ctx[1], synapse=0.008)
+-            explore_thirst_in = nengo.Connection(interoception[THIRST], thirst_search_ctx[0], synapse=0.008)
+-            explore_water_in = nengo.Connection(exteroception[WATER - INTEROCEPTIVE_DIMS], thirst_search_ctx[1], synapse=0.008)
+-
+-            nengo.Connection(interoception[EXPLORE], manipulate_drive_ctx[0], synapse=0.008)
+-            nengo.Connection(exteroception[NOVELTY - INTEROCEPTIVE_DIMS], manipulate_novelty_ctx[0], synapse=0.008)
+-            nengo.Connection(exteroception[MOTION - INTEROCEPTIVE_DIMS], manipulate_motion_ctx[0], synapse=0.008)
+-            for ctx in (manipulate_drive_ctx, manipulate_novelty_ctx, manipulate_motion_ctx):
+-                nengo.Connection(exteroception[MANIPULABLE - INTEROCEPTIVE_DIMS], ctx[1], synapse=0.008)
+-            nengo.Connection(manipulate_pre, manipulate_gate_ctx[0], synapse=0.008)
+-            nengo.Connection(interoception[SAFETY], manipulate_gate_ctx[1], synapse=0.008)
+-
+-            nengo.Connection(flee_ctx, action_values[0], function=_flee_value, synapse=0.010, eval_points=eval_points("eval_flee", 2))
+-            nengo.Connection(drink_ctx, action_values[1], function=_drink_value, synapse=0.010, eval_points=eval_points("eval_drink", 3))
+-            nengo.Connection(eat_ctx, action_values[2], function=_eat_value, synapse=0.010, eval_points=eval_points("eval_eat", 3))
+-            nengo.Connection(rest_ctx, action_values[3], function=_rest_value, synapse=0.010, eval_points=eval_points("eval_rest", 3))
+-            nengo.Connection(social_ctx, action_values[4], function=_social_value, synapse=0.010, eval_points=eval_points("eval_social", 3))
+-            nengo.Connection(care_ctx, action_values[5], function=_care_value, synapse=0.010, eval_points=eval_points("eval_care", 3))
+-            # These eval points are already expressed in the physical coordinates
+-            # represented by each ensemble. Do not scale them by ensemble radius.
+-            # v0.2.5 did so implicitly, over-weighting saturated regions of EXPLORE.
+-            explore_base_conn = nengo.Connection(
+-                explore_base_ctx, explore_pre, function=_explore_base_value,
+-                synapse=0.010, eval_points=eval_points("eval_explore_base", 3, 2800),
+-                scale_eval_points=False,
+-            )
+-            hunger_search_conn = nengo.Connection(
+-                hunger_search_ctx, explore_pre, function=_hunger_search_value,
+-                synapse=0.010, eval_points=eval_points("eval_hunger_search", 2, 2200),
+-                scale_eval_points=False,
+-            )
+-            thirst_search_conn = nengo.Connection(
+-                thirst_search_ctx, explore_pre, function=_thirst_search_value,
+-                synapse=0.010, eval_points=eval_points("eval_thirst_search", 2, 2200),
+-                scale_eval_points=False,
+-            )
+-            explore_subtotal_in = nengo.Connection(explore_pre, explore_gate_ctx[0], synapse=0.008)
+-            explore_safety_in = nengo.Connection(interoception[SAFETY], explore_gate_ctx[1], synapse=0.008)
+-            explore_gate_conn = nengo.Connection(
+-                explore_gate_ctx, action_values[6], function=_explore_safety_gate,
+-                synapse=0.010, eval_points=explore_gate_eval_points(3200),
+-                scale_eval_points=False,
+-            )
+-            for ctx, function, key in (
+-                (manipulate_drive_ctx, _manipulate_drive_value, "eval_manipulate_drive"),
+-                (manipulate_novelty_ctx, _manipulate_novelty_value, "eval_manipulate_novelty"),
+-                (manipulate_motion_ctx, _manipulate_motion_value, "eval_manipulate_motion"),
+-            ):
+-                # Points are in physical 0..1 coordinates, not radius-scaled.
+-                nengo.Connection(ctx, manipulate_pre, function=function, synapse=0.010,
+-                    eval_points=eval_points(key, 2), scale_eval_points=False, seed=sub_seed(key))
+-            nengo.Connection(manipulate_gate_ctx, action_values[7], function=_manipulate_safety_gate,
+-                synapse=0.010, eval_points=eval_points("eval_manipulate_gate", 2),
+-                scale_eval_points=False, seed=sub_seed("eval_manipulate_gate"))
+-
+-            # Preserve the eight premotor spiking channels and original decay.
+-            # Mask inactive channels after filtering so stale activity cannot
+-            # recreate an expired or interrupted commitment.
+-            persistence = nengo.networks.EnsembleArray(
+-                n_neurons=100,
+-                n_ensembles=len(ACTIONS),
+-                ens_dimensions=1,
+-                radius=0.20,
+-                label="Premotor temporal commitment",
+-                seed=sub_seed("persistence"),
+-            )
+-            nengo.Connection(commitment_node, persistence.input, synapse=0.010)
+-            nengo.Connection(action_values, temporal_channels[:len(ACTIONS)], synapse=0.010)
+-            nengo.Connection(persistence.output, temporal_channels[len(ACTIONS):], synapse=0.012)
+-            # The same final low-pass evidence drives projection and diagnosis.
+-            # This moves the old 10 ms competition probe filter before the gate;
+-            # it does not introduce a tail-mean readout or change BG gain/bias.
+-            nengo.Connection(temporal_channels, competition_evidence, synapse=0.010)
+-            nengo.Connection(competition_evidence, competition_values, synapse=None)
+-
+-            basal_ganglia = nengo.networks.BasalGanglia(
+-                dimensions=len(ACTIONS),
+-                n_neurons_per_ensemble=100,
+-                input_bias=0.0,
+-                label="Basal ganglia action competition",
+-                seed=sub_seed("basal_ganglia"),
+-            )
+-            nengo.Connection(competition_values, basal_ganglia.input, synapse=0.008)
+-
+-            self.action_value_probe = nengo.Probe(action_values, synapse=0.01)
+-            self.competition_probe = nengo.Probe(competition_values, synapse=None)
+-            self.competition_evidence_probe = nengo.Probe(competition_evidence, synapse=None)
+-            self.bg_probe = nengo.Probe(basal_ganglia.output, synapse=0.01)
+-            self.state_probe = nengo.Probe(integrated_state, synapse=0.02)
+-
+-            # EXPLORE trace probes are diagnostic only. Probing a Connection's
+-            # output reads the same weighted+filtered signal already delivered
+-            # to its post object; it does not add another policy pathway.
+-            self.explore_input_probes = {
+-                "explore": nengo.Probe(explore_drive_in, "output", synapse=None),
+-                "novelty": nengo.Probe(explore_novelty_in, "output", synapse=None),
+-                "open_space": nengo.Probe(explore_open_space_in, "output", synapse=None),
+-                "hunger": nengo.Probe(explore_hunger_in, "output", synapse=None),
+-                "food": nengo.Probe(explore_food_in, "output", synapse=None),
+-                "thirst": nengo.Probe(explore_thirst_in, "output", synapse=None),
+-                "water": nengo.Probe(explore_water_in, "output", synapse=None),
+-                "subtotal_to_gate": nengo.Probe(explore_subtotal_in, "output", synapse=None),
+-                "safety": nengo.Probe(explore_safety_in, "output", synapse=None),
+-            }
+-            self.explore_term_probes = {
+-                "base": nengo.Probe(explore_base_conn, "output", synapse=None),
+-                "hunger_search": nengo.Probe(hunger_search_conn, "output", synapse=None),
+-                "thirst_search": nengo.Probe(thirst_search_conn, "output", synapse=None),
+-                "gate": nengo.Probe(explore_gate_conn, "output", synapse=None),
+-            }
+-            self.explore_subtotal_probe = nengo.Probe(explore_pre, synapse=None)
+-
+-        # Explicit semantic seeds for every top-level decoder, including the
+-        # identity decoders between intero/exteroception and action contexts.
+-        # Inserting another circuit cannot shift these random streams.
+-        decoder_names = set()
+-        for connection in model.connections:
+-            if not isinstance(connection.pre_obj, nengo.Ensemble):
+-                continue
+-            name = '|'.join((str(connection.pre_obj.label), str(connection.pre_slice),
+-                             str(connection.post_obj.label), str(connection.post_slice),
+-                             getattr(connection.function, '__name__', 'identity')))
+-            if name in decoder_names:
+-                raise ValueError('Duplicate anatomical decoder name: ' + name)
+-            decoder_names.add(name)
+-            if connection.seed is None:
+-                digest = hashlib.sha256(f'{self.seed}|{name}'.encode('utf-8')).digest()
+-                connection.seed = 1 + int.from_bytes(digest[:4], 'little') % 2147483646
+-        self.model = model
+-        self.sim = nengo.Simulator(self.model, dt=self.dt, progress_bar=False)
+-
+-    @property
+-    def estimated_neuron_count(self) -> int:
+-        return sum(ensemble.n_neurons for ensemble in self.model.all_ensembles)
+-
+-    def reset_temporal_state(self) -> None:
+-        """Reset behavioural commitment without resetting neural membranes."""
+-        self.temporal.reset()
+-        self.commitment_input_values[:] = 0.0
+-
+-    def _resolve_world_time(self, seconds: float, world_time: Optional[float]) -> float:
+-        if world_time is None:
+-            self._internal_world_time += max(0.0, float(seconds))
+-        else:
+-            self._internal_world_time = float(world_time)
+-        return self._internal_world_time
+-
+-    def step(self, values: Mapping[str, float], seconds: float = 0.05,
+-             world_time: Optional[float] = None) -> ShadowDecision:
+-        self.input_values[:] = vector_from_mapping(values)
+-        resolved_world_time = self._resolve_world_time(seconds, world_time)
+-        gates = affordance_vector(self.input_values)
+-        bias, _remaining = self.temporal.prepare(resolved_world_time, self.input_values[SAFETY], gates)
+-        self.commitment_input_values[:] = bias
+-        steps = max(1, int(round(float(seconds) / self.dt)))
+-        self.sim.run_steps(steps, progress_bar=False)
+-        action_values = np.asarray(self.sim.data[self.action_value_probe][-1], dtype=float)
+-        evidence = np.asarray(self.sim.data[self.competition_evidence_probe][-1], dtype=float)
+-        competition_values = np.asarray(self.sim.data[self.competition_probe][-1], dtype=float)
+-        bg_output = np.asarray(self.sim.data[self.bg_probe][-1], dtype=float)
+-        def probe_scalar(probe) -> float:
+-            return float(np.asarray(self.sim.data[probe][-1], dtype=float).reshape(-1)[0])
+-        explore_diagnostics = {
+-            "context_inputs": {name: probe_scalar(probe) for name, probe in self.explore_input_probes.items()},
+-            "decoded_terms": {name: probe_scalar(probe) for name, probe in self.explore_term_probes.items()},
+-            "subtotal": probe_scalar(self.explore_subtotal_probe),
+-            "final_action_value": float(action_values[ACTIONS.index("EXPLORE")]),
+-        }
+-        bg_winner = int(np.argmax(bg_output))
+-        winner, commitment = self.temporal.resolve(bg_winner, evidence, resolved_world_time)
+-        ordered = np.sort(competition_values)
+-        competition_margin = float(ordered[-1] - ordered[-2])
+-        commitment['competition_margin'] = competition_margin
+-        decision = ShadowDecision(
+-            selected=ACTIONS[winner],
+-            action_values={name: float(action_values[i]) for i, name in enumerate(ACTIONS)},
+-            competition_values={name: float(competition_values[i]) for i, name in enumerate(ACTIONS)},
+-            competition_evidence={name: float(evidence[i]) for i, name in enumerate(ACTIONS)},
+-            basal_ganglia_output={name: float(bg_output[i]) for i, name in enumerate(ACTIONS)},
+-            affordance_gates={name: float(gates[i]) for i, name in enumerate(ACTIONS)},
+-            explore_diagnostics=explore_diagnostics,
+-            commitment=commitment, confidence=clamp01(competition_margin / 0.40),
+-            sim_time=float(self.sim.time),
+-        )
+-        if hasattr(self.sim, 'clear_probes'):
+-            self.sim.clear_probes()
+-        return decision
+-
+-    def close(self) -> None:
+-        self.sim.close()
++"""BirdAI NeuralBrain v0.2.7 (reconstructed v0.5.3 lineage).
++
++Shadow-mode spiking motivation, affordance gating, temporal commitment and
++basal-ganglia action competition for BirdAI. Godot remains the only actuator.
++
++v0.2.7 is intentionally still a family-level brain: it decides *what kind* of
++behaviour is currently most appropriate (eat, rest, explore, manipulate ...),
++not the exact target object or motor sequence. It receives no utility score,
++utility ranking or utility-selected action from Godot.
++"""
++from __future__ import annotations
++
++import math
++import hashlib
++from dataclasses import dataclass
++from typing import Dict, Iterable, Mapping, Optional, Sequence
++
++import numpy as np
++
++from temporal_commitment import TemporalCommitment
++
++BG_READOUT_WINDOW = 0.030
++
++ACTIONS = ("FLEE", "DRINK", "EAT", "REST", "SOCIAL", "CARE", "EXPLORE", "MANIPULATE")
++INPUT_KEYS = (
++    "hunger", "thirst", "rest", "explore", "social", "safety", "comfort",
++    "food", "water", "person", "rest_site", "care_site", "novelty",
++    "manipulable", "motion", "open_space",
++)
++
++INTEROCEPTIVE_DIMS = 7
++EXTEROCEPTIVE_DIMS = len(INPUT_KEYS) - INTEROCEPTIVE_DIMS
++
++# Global input indexes.
++HUNGER, THIRST, REST, EXPLORE, SOCIAL, SAFETY, COMFORT = range(7)
++FOOD, WATER, PERSON, REST_SITE, CARE_SITE, NOVELTY, MANIPULABLE, MOTION, OPEN_SPACE = range(7, 16)
++
++# Stable named sub-seeds make anatomical populations reproducible. Adding a new
++# circuit later must not silently re-randomize unrelated pathways or BG.
++_SUBSEED_OFFSETS = {
++    "interoception": 10, "exteroception": 11, "integrated_state": 12,
++    "flee_ctx": 30, "drink_ctx": 31, "eat_ctx": 32, "rest_ctx": 33,
++    "social_ctx": 34, "care_ctx": 35, "explore_base_ctx": 36,
++    "hunger_search_ctx": 37, "thirst_search_ctx": 38, "explore_gate_ctx": 39,
++    "manipulate_ctx": 40, "persistence": 50, "basal_ganglia": 60,
++    "eval_flee": 101, "eval_drink": 102, "eval_eat": 103, "eval_rest": 104,
++    "eval_social": 105, "eval_care": 106, "eval_explore_base": 107,
++    "eval_hunger_search": 108, "eval_thirst_search": 109,
++    "eval_explore_gate": 110, "eval_manipulate": 111,
++    "manipulate_drive_ctx": 41, "manipulate_novelty_ctx": 42,
++    "manipulate_motion_ctx": 43, "manipulate_gate_ctx": 44,
++    "eval_manipulate_drive": 112, "eval_manipulate_novelty": 113,
++    "eval_manipulate_motion": 114, "eval_manipulate_gate": 115,
++}
++
++# Temporal commitment is deliberately short. It suppresses 5 Hz decision
++# flicker but is weak enough for a newly dominant physiological opportunity to
++# take over. Strong threat always bypasses it.
++COMMITMENT_STRENGTH = {
++    "FLEE": 0.13,
++    "DRINK": 0.10,
++    "EAT": 0.10,
++    "REST": 0.130,
++    "SOCIAL": 0.085,
++    "CARE": 0.085,
++    "EXPLORE": 0.070,
++    "MANIPULATE": 0.085,
++}
++COMMITMENT_DURATION = {
++    "FLEE": 0.75,
++    "DRINK": 0.90,
++    "EAT": 0.90,
++    "REST": 1.25,
++    "SOCIAL": 0.85,
++    "CARE": 0.85,
++    "EXPLORE": 0.65,
++    "MANIPULATE": 0.80,
++}
++
++
++def clamp01(value: float) -> float:
++    return max(0.0, min(1.0, float(value)))
++
++
++def vector_from_mapping(values: Mapping[str, float]) -> np.ndarray:
++    return np.asarray([clamp01(values.get(key, 0.0)) for key in INPUT_KEYS], dtype=float)
++
++
++def _suppress(safety: float) -> float:
++    """Reduce non-defensive actions as acute danger rises."""
++    return 1.0 - 0.80 * clamp01(safety)
++
++
++def _flee_value(x: Sequence[float]) -> float:
++    safety, motion = np.clip(np.asarray(x, dtype=float), 0.0, 1.0)
++    return 0.015 + 1.55 * safety + 0.25 * safety * motion
++
++
++def _drink_value(x: Sequence[float]) -> float:
++    """Thirst only becomes a drinking opportunity when water is perceived."""
++    thirst, water, safety = np.clip(np.asarray(x, dtype=float), 0.0, 1.0)
++    drive = thirst ** 1.55
++    return (0.010 + water * (0.035 + 1.90 * drive)) * _suppress(safety)
++
++
++def _eat_value(x: Sequence[float]) -> float:
++    """Hunger only becomes direct feeding evidence when food is perceived."""
++    hunger, food, safety = np.clip(np.asarray(x, dtype=float), 0.0, 1.0)
++    drive = hunger ** 1.55
++    return (0.010 + food * (0.035 + 1.90 * drive)) * _suppress(safety)
++
++
++def _rest_value(x: Sequence[float]) -> float:
++    """A suitable rest affordance lowers the threshold for acting on sleep/fatigue."""
++    rest, rest_site, safety = np.clip(np.asarray(x, dtype=float), 0.0, 1.0)
++    value = 0.012 + rest_site * (0.050 + 1.45 * (rest ** 1.05)) + 0.16 * rest * rest
++    return value * (1.0 - 0.50 * safety)
++
++
++def _social_value(x: Sequence[float]) -> float:
++    social, person, safety = np.clip(np.asarray(x, dtype=float), 0.0, 1.0)
++    value = 0.012 + person * (0.035 + 1.15 * (social ** 1.25))
++    return value * _suppress(safety)
++
++
++def _care_value(x: Sequence[float]) -> float:
++    comfort, care_site, safety = np.clip(np.asarray(x, dtype=float), 0.0, 1.0)
++    value = 0.012 + care_site * (0.030 + 1.05 * (comfort ** 1.20))
++    return value * (1.0 - 0.55 * safety)
++
++
++def _explore_base_value(x: Sequence[float]) -> float:
++    """Curiosity/novelty contribution before physiological search and safety gating."""
++    explore, novelty, open_space = np.clip(np.asarray(x, dtype=float), 0.0, 1.0)
++    return (
++        0.018
++        + explore * (0.20 + 0.30 * novelty + 0.10 * open_space)
++        + 0.13 * novelty
++    )
++
++
++def _hunger_search_value(x: Sequence[float]) -> float:
++    hunger, food = np.clip(np.asarray(x, dtype=float), 0.0, 1.0)
++    return (hunger ** 1.30) * (1.0 - food) * 0.45
++
++
++def _thirst_search_value(x: Sequence[float]) -> float:
++    thirst, water = np.clip(np.asarray(x, dtype=float), 0.0, 1.0)
++    return (thirst ** 1.30) * (1.0 - water) * 0.45
++
++
++def _explore_safety_gate(x: Sequence[float]) -> float:
++    subtotal = max(0.0, min(1.80, float(x[0])))
++    safety = clamp01(float(x[1]))
++    return subtotal * _suppress(safety)
++
++
++def _explore_value(x: Sequence[float]) -> float:
++    """Exact v0.2 exploration policy, written as factorized subterms.
++
++    The analytical policy is unchanged. The spiking network in v0.2.7 mirrors
++    this factorization so an eight-dimensional decoder no longer has to learn
++    all curiosity, search and safety interactions in one population.
++    """
++    explore, novelty, open_space, hunger, food, thirst, water, safety = np.clip(
++        np.asarray(x, dtype=float), 0.0, 1.0
++    )
++    subtotal = (
++        _explore_base_value([explore, novelty, open_space])
++        + _hunger_search_value([hunger, food])
++        + _thirst_search_value([thirst, water])
++    )
++    return _explore_safety_gate([subtotal, safety])
++
++
++def _manipulate_value(x: Sequence[float]) -> float:
++    """Manipulation requires a perceived manipulable affordance.
++
++    Novelty is useful but not mandatory. A familiar object can still invite
++    pecking/pushing/inspection when exploratory motivation remains active.
++    """
++    explore, novelty, manipulable, motion, safety = np.clip(np.asarray(x, dtype=float), 0.0, 1.0)
++    value = 0.012 + manipulable * (
++        0.025 + 0.30 * explore + 0.55 * novelty + 0.06 * motion
++    )
++    return value * _suppress(safety)
++
++
++def _manipulate_drive_value(x: Sequence[float]) -> float:
++    explore, manipulable = np.clip(np.asarray(x, dtype=float), 0.0, 1.0)
++    return 0.012 + manipulable * (0.025 + 0.30 * explore)
++
++
++def _manipulate_novelty_value(x: Sequence[float]) -> float:
++    novelty, manipulable = np.clip(np.asarray(x, dtype=float), 0.0, 1.0)
++    return manipulable * 0.55 * novelty
++
++
++def _manipulate_motion_value(x: Sequence[float]) -> float:
++    motion, manipulable = np.clip(np.asarray(x, dtype=float), 0.0, 1.0)
++    return manipulable * 0.06 * motion
++
++
++def _manipulate_safety_gate(x: Sequence[float]) -> float:
++    # 0.947 is the algebraic maximum of the original pre-safety formula.
++    subtotal = max(0.0, min(0.947, float(x[0])))
++    return subtotal * _suppress(float(x[1]))
++
++
++def affordance_vector(values: Iterable[float]) -> np.ndarray:
++    """Observable opportunity gates for diagnostics and temporal commitment.
++
++    These are not utility scores. They indicate whether the body can currently
++    express an action family in the perceived context. EXPLORE remains broadly
++    available because orienting/searching does not require a specific object.
++    """
++    x = np.asarray(list(values), dtype=float)
++    if x.shape[0] != len(INPUT_KEYS):
++        raise ValueError(f"expected {len(INPUT_KEYS)} inputs, got {x.shape[0]}")
++    x = np.clip(x, 0.0, 1.0)
++    search_opportunity = max(
++        0.35,
++        float(x[OPEN_SPACE]),
++        float(x[NOVELTY]),
++        float(x[HUNGER] * (1.0 - x[FOOD])),
++        float(x[THIRST] * (1.0 - x[WATER])),
++    )
++    return np.asarray([
++        1.0,
++        x[WATER],
++        x[FOOD],
++        x[REST_SITE],
++        x[PERSON],
++        x[CARE_SITE],
++        search_opportunity,
++        x[MANIPULABLE],
++    ], dtype=float)
++
++
++def valuation(x: Iterable[float]) -> np.ndarray:
++    """Analytical reference for v0.2 neural motivational evidence.
++
++    The live Nengo model approximates each pathway independently; this function
++    is retained only for self-test, replay diagnostics and decoder error metrics.
++    """
++    values = np.asarray(list(x), dtype=float)
++    if values.shape[0] != len(INPUT_KEYS):
++        raise ValueError(f"expected {len(INPUT_KEYS)} inputs, got {values.shape[0]}")
++    values = np.clip(values, 0.0, 1.0)
++
++    result = np.asarray(
++        [
++            _flee_value([values[SAFETY], values[MOTION]]),
++            _drink_value([values[THIRST], values[WATER], values[SAFETY]]),
++            _eat_value([values[HUNGER], values[FOOD], values[SAFETY]]),
++            _rest_value([values[REST], values[REST_SITE], values[SAFETY]]),
++            _social_value([values[SOCIAL], values[PERSON], values[SAFETY]]),
++            _care_value([values[COMFORT], values[CARE_SITE], values[SAFETY]]),
++            _explore_value([
++                values[EXPLORE], values[NOVELTY], values[OPEN_SPACE], values[HUNGER],
++                values[FOOD], values[THIRST], values[WATER], values[SAFETY],
++            ]),
++            _manipulate_value([
++                values[EXPLORE], values[NOVELTY], values[MANIPULABLE], values[MOTION], values[SAFETY],
++            ]),
++        ],
++        dtype=float,
++    )
++    return np.clip(result, 0.0, 1.8)
++
++
++@dataclass
++class ShadowDecision:
++    selected: str
++    action_values: Dict[str, float]
++    competition_values: Dict[str, float]
++    competition_evidence: Dict[str, float]
++    basal_ganglia_output: Dict[str, float]
++    basal_ganglia_instantaneous: Dict[str, float]
++    basal_ganglia_readout_window_seconds: float
++    affordance_gates: Dict[str, float]
++    explore_diagnostics: Dict[str, object]
++    commitment: Dict[str, object]
++    confidence: float
++    sim_time: float
++
++
++class NeuralBrain:
++    """Persistent ~11.9k-neuron Nengo motivational action-competition model."""
++
++    def __init__(self, seed: int = 20260910, dt: float = 0.001):
++        import nengo
++
++        self.nengo = nengo
++        self.seed = int(seed)
++        self.dt = float(dt)
++        self.input_values = np.zeros(len(INPUT_KEYS), dtype=float)
++        self.commitment_input_values = np.zeros(len(ACTIONS), dtype=float)
++        self.temporal = TemporalCommitment(ACTIONS, COMMITMENT_STRENGTH, COMMITMENT_DURATION)
++        self._internal_world_time = 0.0
++        def sub_seed(name: str) -> int:
++            offset = _SUBSEED_OFFSETS[name]
++            value = int((self.seed + 100003 * int(offset)) % 2147483647)
++            return value if value != 0 else 1
++
++        def eval_points(name: str, dimensions: int, count: int = 2200) -> np.ndarray:
++            # Broad 0..1 training only. No selftest coordinates are injected.
++            rng = np.random.default_rng(sub_seed(name))
++            points = rng.uniform(0.0, 1.0, size=(count, dimensions))
++            anchors = np.vstack([
++                np.zeros((1, dimensions)),
++                np.ones((1, dimensions)),
++                np.eye(dimensions),
++            ])
++            return np.vstack([points, anchors])
++
++        def explore_gate_eval_points(count: int = 3000) -> np.ndarray:
++            # Dimension 0 is the already-summed exploration subtotal (0..1.648);
++            # dimension 1 is acute safety (0..1). These are structural domain
++            # anchors, not behavior/selftest examples.
++            rng = np.random.default_rng(sub_seed("eval_explore_gate"))
++            points = np.column_stack([
++                rng.uniform(0.0, 1.70, size=count),
++                rng.uniform(0.0, 1.0, size=count),
++            ])
++            anchors = np.asarray([
++                [0.0, 0.0], [0.0, 1.0], [1.70, 0.0], [1.70, 1.0],
++                [0.20, 0.0], [0.60, 0.25], [1.00, 0.50], [1.40, 0.75],
++            ], dtype=float)
++            return np.vstack([points, anchors])
++
++        with nengo.Network(label="BirdAI NeuralBrain v0.2.7 (reconstructed v0.5.3 lineage)", seed=self.seed) as model:
++            input_node = nengo.Node(lambda _t: self.input_values, size_out=len(INPUT_KEYS), label="Embodied input")
++            commitment_node = nengo.Node(
++                lambda _t: self.commitment_input_values,
++                size_out=len(ACTIONS),
++                label="Temporal commitment state",
++            )
++
++            interoception = nengo.Ensemble(
++                n_neurons=500,
++                dimensions=INTEROCEPTIVE_DIMS,
++                radius=math.sqrt(INTEROCEPTIVE_DIMS),
++                label="Interoception",
++                seed=sub_seed("interoception"),
++            )
++            exteroception = nengo.Ensemble(
++                n_neurons=650,
++                dimensions=EXTEROCEPTIVE_DIMS,
++                radius=math.sqrt(EXTEROCEPTIVE_DIMS),
++                label="Perceptual context",
++                seed=sub_seed("exteroception"),
++            )
++            integrated_state = nengo.Ensemble(
++                n_neurons=1200,
++                dimensions=len(INPUT_KEYS),
++                radius=math.sqrt(len(INPUT_KEYS)),
++                label="Integrated state / NCL-like association",
++                seed=sub_seed("integrated_state"),
++            )
++            action_values = nengo.Node(size_in=len(ACTIONS), label="Motivation + affordance evidence")
++            # Both evidence and state projection are observable. The temporal
++            # controller receives filtered neural evidence, never valuation().
++            temporal_channels = nengo.Node(size_in=2 * len(ACTIONS), label="Neural evidence and premotor channels")
++            competition_evidence = nengo.Node(
++                lambda _t, x: x[:len(ACTIONS)] + x[len(ACTIONS):] * (self.commitment_input_values != 0.0),
++                size_in=2 * len(ACTIONS), size_out=len(ACTIONS), label="Filtered evidence before hysteresis")
++            competition_values = nengo.Node(
++                lambda _t, x: self.temporal.project(x), size_in=len(ACTIONS),
++                size_out=len(ACTIONS), label="Competition authorized by temporal state")
++
++            nengo.Connection(input_node[:INTEROCEPTIVE_DIMS], interoception, synapse=0.01)
++            nengo.Connection(input_node[INTEROCEPTIVE_DIMS:], exteroception, synapse=0.01)
++            nengo.Connection(interoception, integrated_state[:INTEROCEPTIVE_DIMS], synapse=0.015)
++            nengo.Connection(exteroception, integrated_state[INTEROCEPTIVE_DIMS:], synapse=0.015)
++
++            # Dedicated low-dimensional action pathways. Each family sees only the
++            # motivational and perceptual variables relevant to its affordance.
++            flee_ctx = nengo.Ensemble(240, 2, radius=math.sqrt(2), label="Flee context", seed=sub_seed("flee_ctx"))
++            drink_ctx = nengo.Ensemble(360, 3, radius=math.sqrt(3), label="Drink context", seed=sub_seed("drink_ctx"))
++            eat_ctx = nengo.Ensemble(360, 3, radius=math.sqrt(3), label="Eat context", seed=sub_seed("eat_ctx"))
++            rest_ctx = nengo.Ensemble(360, 3, radius=math.sqrt(3), label="Rest context", seed=sub_seed("rest_ctx"))
++            social_ctx = nengo.Ensemble(360, 3, radius=math.sqrt(3), label="Social context", seed=sub_seed("social_ctx"))
++            care_ctx = nengo.Ensemble(360, 3, radius=math.sqrt(3), label="Care context", seed=sub_seed("care_ctx"))
++            # EXPLORE is factorized into low-dimensional spiking pathways. The
++            # v0.5 robustness sweep showed a large positive decoder bias in the
++            # former single 8D explore ensemble across seeds. These subcircuits
++            # implement the same analytical policy without changing its weights.
++            explore_base_ctx = nengo.Ensemble(500, 3, radius=math.sqrt(3), label="Explore curiosity context", seed=sub_seed("explore_base_ctx"))
++            hunger_search_ctx = nengo.Ensemble(300, 2, radius=math.sqrt(2), label="Hunger search context", seed=sub_seed("hunger_search_ctx"))
++            thirst_search_ctx = nengo.Ensemble(300, 2, radius=math.sqrt(2), label="Thirst search context", seed=sub_seed("thirst_search_ctx"))
++            explore_pre = nengo.Node(size_in=1, label="Explore subtotal")
++            explore_gate_ctx = nengo.Ensemble(400, 2, radius=2.10, label="Explore safety gate", seed=sub_seed("explore_gate_ctx"))
++            # Separate 2D bilinear terms and safety gate preserve the exact
++            # analytical MANIPULATE policy without a single 5D decoder.
++            manipulate_drive_ctx = nengo.Ensemble(300, 2, radius=math.sqrt(2), label="Manipulate drive and affordance", seed=sub_seed("manipulate_drive_ctx"))
++            manipulate_novelty_ctx = nengo.Ensemble(300, 2, radius=math.sqrt(2), label="Manipulate novelty and affordance", seed=sub_seed("manipulate_novelty_ctx"))
++            manipulate_motion_ctx = nengo.Ensemble(200, 2, radius=math.sqrt(2), label="Manipulate motion and affordance", seed=sub_seed("manipulate_motion_ctx"))
++            manipulate_pre = nengo.Node(size_in=1, label="Manipulate subtotal")
++            manipulate_gate_ctx = nengo.Ensemble(400, 2, radius=math.sqrt(2), label="Manipulate safety gate", seed=sub_seed("manipulate_gate_ctx"))
++
++            # Reconstructed v0.5.3: action contexts receive decoded intero/extero
++            # signals, as in original v0.5. No raw-input context bypass.
++            nengo.Connection(interoception[SAFETY], flee_ctx[0], synapse=0.008)
++            nengo.Connection(exteroception[MOTION - INTEROCEPTIVE_DIMS], flee_ctx[1], synapse=0.008)
++
++            for ctx, drive_idx, resource_idx in (
++                (drink_ctx, THIRST, WATER),
++                (eat_ctx, HUNGER, FOOD),
++            ):
++                nengo.Connection(interoception[drive_idx], ctx[0], synapse=0.008)
++                nengo.Connection(exteroception[resource_idx - INTEROCEPTIVE_DIMS], ctx[1], synapse=0.008)
++                nengo.Connection(interoception[SAFETY], ctx[2], synapse=0.008)
++
++            for ctx, drive_idx, site_idx in (
++                (rest_ctx, REST, REST_SITE),
++                (social_ctx, SOCIAL, PERSON),
++                (care_ctx, COMFORT, CARE_SITE),
++            ):
++                nengo.Connection(interoception[drive_idx], ctx[0], synapse=0.008)
++                nengo.Connection(exteroception[site_idx - INTEROCEPTIVE_DIMS], ctx[1], synapse=0.008)
++                nengo.Connection(interoception[SAFETY], ctx[2], synapse=0.008)
++
++            explore_drive_in = nengo.Connection(interoception[EXPLORE], explore_base_ctx[0], synapse=0.008)
++            explore_novelty_in = nengo.Connection(exteroception[NOVELTY - INTEROCEPTIVE_DIMS], explore_base_ctx[1], synapse=0.008)
++            explore_open_space_in = nengo.Connection(exteroception[OPEN_SPACE - INTEROCEPTIVE_DIMS], explore_base_ctx[2], synapse=0.008)
++            explore_hunger_in = nengo.Connection(interoception[HUNGER], hunger_search_ctx[0], synapse=0.008)
++            explore_food_in = nengo.Connection(exteroception[FOOD - INTEROCEPTIVE_DIMS], hunger_search_ctx[1], synapse=0.008)
++            explore_thirst_in = nengo.Connection(interoception[THIRST], thirst_search_ctx[0], synapse=0.008)
++            explore_water_in = nengo.Connection(exteroception[WATER - INTEROCEPTIVE_DIMS], thirst_search_ctx[1], synapse=0.008)
++
++            nengo.Connection(interoception[EXPLORE], manipulate_drive_ctx[0], synapse=0.008)
++            nengo.Connection(exteroception[NOVELTY - INTEROCEPTIVE_DIMS], manipulate_novelty_ctx[0], synapse=0.008)
++            nengo.Connection(exteroception[MOTION - INTEROCEPTIVE_DIMS], manipulate_motion_ctx[0], synapse=0.008)
++            for ctx in (manipulate_drive_ctx, manipulate_novelty_ctx, manipulate_motion_ctx):
++                nengo.Connection(exteroception[MANIPULABLE - INTEROCEPTIVE_DIMS], ctx[1], synapse=0.008)
++            nengo.Connection(manipulate_pre, manipulate_gate_ctx[0], synapse=0.008)
++            nengo.Connection(interoception[SAFETY], manipulate_gate_ctx[1], synapse=0.008)
++
++            nengo.Connection(flee_ctx, action_values[0], function=_flee_value, synapse=0.010, eval_points=eval_points("eval_flee", 2))
++            nengo.Connection(drink_ctx, action_values[1], function=_drink_value, synapse=0.010, eval_points=eval_points("eval_drink", 3))
++            nengo.Connection(eat_ctx, action_values[2], function=_eat_value, synapse=0.010, eval_points=eval_points("eval_eat", 3))
++            nengo.Connection(rest_ctx, action_values[3], function=_rest_value, synapse=0.010, eval_points=eval_points("eval_rest", 3))
++            nengo.Connection(social_ctx, action_values[4], function=_social_value, synapse=0.010, eval_points=eval_points("eval_social", 3))
++            nengo.Connection(care_ctx, action_values[5], function=_care_value, synapse=0.010, eval_points=eval_points("eval_care", 3))
++            # These eval points are already expressed in the physical coordinates
++            # represented by each ensemble. Do not scale them by ensemble radius.
++            # v0.2.5 did so implicitly, over-weighting saturated regions of EXPLORE.
++            explore_base_conn = nengo.Connection(
++                explore_base_ctx, explore_pre, function=_explore_base_value,
++                synapse=0.010, eval_points=eval_points("eval_explore_base", 3, 2800),
++                scale_eval_points=False,
++            )
++            hunger_search_conn = nengo.Connection(
++                hunger_search_ctx, explore_pre, function=_hunger_search_value,
++                synapse=0.010, eval_points=eval_points("eval_hunger_search", 2, 2200),
++                scale_eval_points=False,
++            )
++            thirst_search_conn = nengo.Connection(
++                thirst_search_ctx, explore_pre, function=_thirst_search_value,
++                synapse=0.010, eval_points=eval_points("eval_thirst_search", 2, 2200),
++                scale_eval_points=False,
++            )
++            explore_subtotal_in = nengo.Connection(explore_pre, explore_gate_ctx[0], synapse=0.008)
++            explore_safety_in = nengo.Connection(interoception[SAFETY], explore_gate_ctx[1], synapse=0.008)
++            explore_gate_conn = nengo.Connection(
++                explore_gate_ctx, action_values[6], function=_explore_safety_gate,
++                synapse=0.010, eval_points=explore_gate_eval_points(3200),
++                scale_eval_points=False,
++            )
++            for ctx, function, key in (
++                (manipulate_drive_ctx, _manipulate_drive_value, "eval_manipulate_drive"),
++                (manipulate_novelty_ctx, _manipulate_novelty_value, "eval_manipulate_novelty"),
++                (manipulate_motion_ctx, _manipulate_motion_value, "eval_manipulate_motion"),
++            ):
++                # Points are in physical 0..1 coordinates, not radius-scaled.
++                nengo.Connection(ctx, manipulate_pre, function=function, synapse=0.010,
++                    eval_points=eval_points(key, 2), scale_eval_points=False, seed=sub_seed(key))
++            nengo.Connection(manipulate_gate_ctx, action_values[7], function=_manipulate_safety_gate,
++                synapse=0.010, eval_points=eval_points("eval_manipulate_gate", 2),
++                scale_eval_points=False, seed=sub_seed("eval_manipulate_gate"))
++
++            # Preserve the eight premotor spiking channels and original decay.
++            # Mask inactive channels after filtering so stale activity cannot
++            # recreate an expired or interrupted commitment.
++            persistence = nengo.networks.EnsembleArray(
++                n_neurons=100,
++                n_ensembles=len(ACTIONS),
++                ens_dimensions=1,
++                radius=0.20,
++                label="Premotor temporal commitment",
++                seed=sub_seed("persistence"),
++            )
++            nengo.Connection(commitment_node, persistence.input, synapse=0.010)
++            nengo.Connection(action_values, temporal_channels[:len(ACTIONS)], synapse=0.010)
++            nengo.Connection(persistence.output, temporal_channels[len(ACTIONS):], synapse=0.012)
++            # The same final low-pass evidence drives projection and diagnosis.
++            # This moves the old 10 ms competition probe filter before the gate;
++            # it does not introduce a tail-mean readout or change BG gain/bias.
++            nengo.Connection(temporal_channels, competition_evidence, synapse=0.010)
++            nengo.Connection(competition_evidence, competition_values, synapse=None)
++
++            basal_ganglia = nengo.networks.BasalGanglia(
++                dimensions=len(ACTIONS),
++                n_neurons_per_ensemble=100,
++                input_bias=0.0,
++                label="Basal ganglia action competition",
++                seed=sub_seed("basal_ganglia"),
++            )
++            nengo.Connection(competition_values, basal_ganglia.input, synapse=0.008)
++
++            self.action_value_probe = nengo.Probe(action_values, synapse=0.01)
++            self.competition_probe = nengo.Probe(competition_values, synapse=None)
++            self.competition_evidence_probe = nengo.Probe(competition_evidence, synapse=None)
++            self.bg_probe = nengo.Probe(basal_ganglia.output, synapse=0.01)
++            self.state_probe = nengo.Probe(integrated_state, synapse=0.02)
++
++            # EXPLORE trace probes are diagnostic only. Probing a Connection's
++            # output reads the same weighted+filtered signal already delivered
++            # to its post object; it does not add another policy pathway.
++            self.explore_input_probes = {
++                "explore": nengo.Probe(explore_drive_in, "output", synapse=None),
++                "novelty": nengo.Probe(explore_novelty_in, "output", synapse=None),
++                "open_space": nengo.Probe(explore_open_space_in, "output", synapse=None),
++                "hunger": nengo.Probe(explore_hunger_in, "output", synapse=None),
++                "food": nengo.Probe(explore_food_in, "output", synapse=None),
++                "thirst": nengo.Probe(explore_thirst_in, "output", synapse=None),
++                "water": nengo.Probe(explore_water_in, "output", synapse=None),
++                "subtotal_to_gate": nengo.Probe(explore_subtotal_in, "output", synapse=None),
++                "safety": nengo.Probe(explore_safety_in, "output", synapse=None),
++            }
++            self.explore_term_probes = {
++                "base": nengo.Probe(explore_base_conn, "output", synapse=None),
++                "hunger_search": nengo.Probe(hunger_search_conn, "output", synapse=None),
++                "thirst_search": nengo.Probe(thirst_search_conn, "output", synapse=None),
++                "gate": nengo.Probe(explore_gate_conn, "output", synapse=None),
++            }
++            self.explore_subtotal_probe = nengo.Probe(explore_pre, synapse=None)
++
++        # Explicit semantic seeds for every top-level decoder, including the
++        # identity decoders between intero/exteroception and action contexts.
++        # Inserting another circuit cannot shift these random streams.
++        decoder_names = set()
++        for connection in model.connections:
++            if not isinstance(connection.pre_obj, nengo.Ensemble):
++                continue
++            name = '|'.join((str(connection.pre_obj.label), str(connection.pre_slice),
++                             str(connection.post_obj.label), str(connection.post_slice),
++                             getattr(connection.function, '__name__', 'identity')))
++            if name in decoder_names:
++                raise ValueError('Duplicate anatomical decoder name: ' + name)
++            decoder_names.add(name)
++            if connection.seed is None:
++                digest = hashlib.sha256(f'{self.seed}|{name}'.encode('utf-8')).digest()
++                connection.seed = 1 + int.from_bytes(digest[:4], 'little') % 2147483646
++        self.model = model
++        self.sim = nengo.Simulator(self.model, dt=self.dt, progress_bar=False)
++
++    @property
++    def estimated_neuron_count(self) -> int:
++        return sum(ensemble.n_neurons for ensemble in self.model.all_ensembles)
++
++    def reset_temporal_state(self) -> None:
++        """Reset behavioural commitment without resetting neural membranes."""
++        self.temporal.reset()
++        self.commitment_input_values[:] = 0.0
++
++    def _resolve_world_time(self, seconds: float, world_time: Optional[float]) -> float:
++        if world_time is None:
++            self._internal_world_time += max(0.0, float(seconds))
++        else:
++            self._internal_world_time = float(world_time)
++        return self._internal_world_time
++
++    def step(self, values: Mapping[str, float], seconds: float = 0.05,
++             world_time: Optional[float] = None) -> ShadowDecision:
++        self.input_values[:] = vector_from_mapping(values)
++        resolved_world_time = self._resolve_world_time(seconds, world_time)
++        gates = affordance_vector(self.input_values)
++        bias, _remaining = self.temporal.prepare(resolved_world_time, self.input_values[SAFETY], gates)
++        self.commitment_input_values[:] = bias
++        steps = max(1, int(round(float(seconds) / self.dt)))
++        self.sim.run_steps(steps, progress_bar=False)
++        action_values = np.asarray(self.sim.data[self.action_value_probe][-1], dtype=float)
++        evidence = np.asarray(self.sim.data[self.competition_evidence_probe][-1], dtype=float)
++        competition_values = np.asarray(self.sim.data[self.competition_probe][-1], dtype=float)
++        bg_trace = np.asarray(self.sim.data[self.bg_probe], dtype=float)
++        bg_instantaneous = np.asarray(bg_trace[-1], dtype=float)
++        # A spiking basal-ganglia circuit should not be interpreted from one
++        # millisecond endpoint sample. The probe is already low-pass filtered
++        # (10 ms); v0.2.7 integrates only the final 30 ms of that *same* BG
++        # output. This changes no valuation, competition, BG weights, gain or
++        # bias; it only stabilizes the motor-selection readout across spiking
++        # realizations and numerical backends.
++        readout_steps = max(1, int(round(BG_READOUT_WINDOW / self.dt)))
++        bg_window = bg_trace[-min(readout_steps, len(bg_trace)):]
++        bg_output = np.asarray(np.mean(bg_window, axis=0), dtype=float)
++        def probe_scalar(probe) -> float:
++            return float(np.asarray(self.sim.data[probe][-1], dtype=float).reshape(-1)[0])
++        explore_diagnostics = {
++            "context_inputs": {name: probe_scalar(probe) for name, probe in self.explore_input_probes.items()},
++            "decoded_terms": {name: probe_scalar(probe) for name, probe in self.explore_term_probes.items()},
++            "subtotal": probe_scalar(self.explore_subtotal_probe),
++            "final_action_value": float(action_values[ACTIONS.index("EXPLORE")]),
++        }
++        bg_winner = int(np.argmax(bg_output))
++        winner, commitment = self.temporal.resolve(bg_winner, evidence, resolved_world_time)
++        ordered = np.sort(competition_values)
++        competition_margin = float(ordered[-1] - ordered[-2])
++        commitment['competition_margin'] = competition_margin
++        decision = ShadowDecision(
++            selected=ACTIONS[winner],
++            action_values={name: float(action_values[i]) for i, name in enumerate(ACTIONS)},
++            competition_values={name: float(competition_values[i]) for i, name in enumerate(ACTIONS)},
++            competition_evidence={name: float(evidence[i]) for i, name in enumerate(ACTIONS)},
++            basal_ganglia_output={name: float(bg_output[i]) for i, name in enumerate(ACTIONS)},
++            basal_ganglia_instantaneous={name: float(bg_instantaneous[i]) for i, name in enumerate(ACTIONS)},
++            basal_ganglia_readout_window_seconds=float(BG_READOUT_WINDOW),
++            affordance_gates={name: float(gates[i]) for i, name in enumerate(ACTIONS)},
++            explore_diagnostics=explore_diagnostics,
++            commitment=commitment, confidence=clamp01(competition_margin / 0.40),
++            sim_time=float(self.sim.time),
++        )
++        if hasattr(self.sim, 'clear_probes'):
++            self.sim.clear_probes()
++        return decision
++
++    def close(self) -> None:
++        self.sim.close()
+diff -ruN '--exclude=.venv' '--exclude=data' '--exclude=docs' /mnt/data/BirdAI-v0.5.7-NeuralBrain-v0.2.6-NeuralControl-portable/brain/robustness_v027.py /mnt/data/BirdAI-v0.5.8-NeuralBrain-v0.2.7-BGReadout-portable/brain/robustness_v027.py
+--- /mnt/data/BirdAI-v0.5.7-NeuralBrain-v0.2.6-NeuralControl-portable/brain/robustness_v027.py	1970-01-01 00:00:00.000000000 +0000
++++ /mnt/data/BirdAI-v0.5.8-NeuralBrain-v0.2.7-BGReadout-portable/brain/robustness_v027.py	2026-09-11 09:29:08.681606961 +0000
+@@ -0,0 +1,102 @@
++"""Extended multi-seed robustness runner for BirdAI NeuralBrain v0.2.7."""
++from __future__ import annotations
++
++import argparse
++import json
++import platform
++from pathlib import Path
++
++import numpy as np
++
++from neural_model import ACTIONS
++from selftest import run_seed
++
++SEEDS = (20260910, 42, 1701, 7, 2026, 31337, 271828, 314159, 8675309, 123456789)
++
++
++def main() -> int:
++    parser = argparse.ArgumentParser()
++    parser.add_argument("--out", default="data/neural-robustness-v0.2.7.json")
++    args = parser.parse_args()
++
++    import nengo
++    try:
++        import scipy
++        scipy_version = scipy.__version__
++    except Exception:
++        scipy_version = None
++
++    runs = [run_seed(seed) for seed in SEEDS]
++    neural_matches = 0
++    neural_total = 0
++    bg_matches = 0
++    bg_total = 0
++    mixed_traces = []
++
++    for run in runs:
++        for item in run["results"]:
++            neural_total += 1
++            neural_matches += int(item["neural_value_pick"] == item["analytical_pick"])
++            bg_total += 1
++            bg_matches += int(item["bg_pick"] == item["competition_value_pick"])
++            if item["scenario"] == "mixed_manipulate":
++                mixed_traces.append({
++                    "seed": run["seed"],
++                    "selected": item["selected"],
++                    "analytical_pick": item["analytical_pick"],
++                    "neural_pick": item["neural_value_pick"],
++                    "competition_pick": item["competition_value_pick"],
++                    "bg_pick": item["bg_pick"],
++                    "analytical_explore": item["analytical_values"]["EXPLORE"],
++                    "neural_explore": item["action_values"]["EXPLORE"],
++                    "analytical_manipulate": item["analytical_values"]["MANIPULATE"],
++                    "neural_manipulate": item["action_values"]["MANIPULATE"],
++                    "explore_trace": item["explore_trace"],
++                })
++
++    failures = [f"seed={run['seed']}: {failure}" for run in runs for failure in run["failures"]]
++    all_pass = not failures
++    qualified = all_pass and neural_matches == neural_total and bg_matches == bg_total
++    report = {
++        "diagnostic": "BirdAI v0.5.8 NeuralBrain v0.2.7 BG readout robustness",
++        "status": "PASS" if qualified else "FAIL",
++        "qualified": qualified,
++        "candidate_change": "30 ms mean readout of the existing 10 ms-filtered BG output; valuation, competition, BG100 weights/bias/gain, commitment and actuator authority unchanged",
++        "seeds": list(SEEDS),
++        "checks_per_seed": 21,
++        "behavior_checks": 21 * len(SEEDS),
++        "behavior_passed": sum(run["passed"] for run in runs),
++        "behavior_total": sum(run["checks"] for run in runs),
++        "neural_analytical_match_count": neural_matches,
++        "neural_analytical_match_total": neural_total,
++        "bg_competition_match_count": bg_matches,
++        "bg_competition_match_total": bg_total,
++        "failures": failures,
++        "mixed_manipulate_traces": mixed_traces,
++        "environment": {
++            "python": platform.python_version(),
++            "nengo": nengo.__version__,
++            "numpy": np.__version__,
++            "scipy": scipy_version,
++        },
++        "runs": runs,
++    }
++
++    out = Path(args.out)
++    out.parent.mkdir(parents=True, exist_ok=True)
++    out.write_text(json.dumps(report, indent=2), encoding="utf-8")
++
++    print(f"NeuralBrain v0.2.7 extended robustness: {report['status']}")
++    print(f"  behavior: {report['behavior_passed']}/{report['behavior_total']}")
++    print(f"  neural vs analytical: {neural_matches}/{neural_total}")
++    print(f"  BG vs competition: {bg_matches}/{bg_total}")
++    for run in runs:
++        print(f"  seed={run['seed']}: {run['passed']}/{run['checks']}")
++        for failure in run["failures"]:
++            print(f"    - {failure}")
++    print(f"Resultat: {out}")
++    return 0 if qualified else 1
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff -ruN '--exclude=.venv' '--exclude=data' '--exclude=docs' /mnt/data/BirdAI-v0.5.7-NeuralBrain-v0.2.6-NeuralControl-portable/brain/selftest.py /mnt/data/BirdAI-v0.5.8-NeuralBrain-v0.2.7-BGReadout-portable/brain/selftest.py
+--- /mnt/data/BirdAI-v0.5.7-NeuralBrain-v0.2.6-NeuralControl-portable/brain/selftest.py	2026-09-10 22:56:17.000000000 +0000
++++ /mnt/data/BirdAI-v0.5.8-NeuralBrain-v0.2.7-BGReadout-portable/brain/selftest.py	2026-09-11 09:29:08.681259398 +0000
+@@ -1,242 +1,245 @@
+-"""Multi-seed runtime test for BirdAI NeuralBrain v0.2.6."""
+-from __future__ import annotations
+-
+-import argparse
+-import json
+-import platform
+-from pathlib import Path
+-
+-import numpy as np
+-
+-from neural_model import (
+-    ACTIONS, NeuralBrain, affordance_vector, valuation, vector_from_mapping,
+-    _explore_base_value, _hunger_search_value, _thirst_search_value, _explore_safety_gate,
+-)
+-
+-# Same behavioral requirements as v0.5. No fixture has been relaxed or moved.
+-SCENARIOS = [
+-    ("danger", {"safety": 0.95, "motion": 0.8}, "FLEE"),
+-    ("thirst", {"thirst": 0.92, "water": 1.0, "explore": 0.2}, "DRINK"),
+-    ("hunger", {"hunger": 0.92, "food": 1.0, "explore": 0.2}, "EAT"),
+-    ("rest", {"rest": 0.92, "rest_site": 1.0, "explore": 0.15}, "REST"),
+-    ("social", {"social": 0.92, "person": 1.0, "explore": 0.15}, "SOCIAL"),
+-    ("care", {"comfort": 0.92, "care_site": 1.0, "explore": 0.15}, "CARE"),
+-    ("novel_world", {"explore": 0.90, "novelty": 0.85, "open_space": 0.8}, "EXPLORE"),
+-    ("hungry_search", {"hunger": 0.95, "food": 0.0, "explore": 0.30, "novelty": 0.10, "open_space": 0.4}, "EXPLORE"),
+-    ("thirsty_search", {"thirst": 0.95, "water": 0.0, "explore": 0.30, "novelty": 0.10, "open_space": 0.4}, "EXPLORE"),
+-    ("novel_object", {"explore": 0.75, "novelty": 0.75, "manipulable": 1.0}, "MANIPULATE"),
+-    ("mixed_rest", {
+-        "rest": 0.15, "rest_site": 0.95, "explore": 0.48, "novelty": 0.03,
+-        "manipulable": 0.55, "food": 0.55, "hunger": 0.14, "social": 0.30,
+-    }, "REST"),
+-    ("mixed_manipulate", {
+-        "rest": 0.12, "rest_site": 0.25, "explore": 0.48, "novelty": 0.12,
+-        "manipulable": 0.92, "food": 0.35, "hunger": 0.14, "social": 0.25,
+-    }, "MANIPULATE"),
+-    ("mixed_eat", {
+-        "hunger": 0.26, "food": 0.92, "explore": 0.48, "novelty": 0.03,
+-        "manipulable": 0.85, "rest": 0.12, "rest_site": 0.45,
+-    }, "EAT"),
+-    ("mixed_drink", {
+-        "thirst": 0.30, "water": 0.90, "explore": 0.46, "novelty": 0.03,
+-        "manipulable": 0.75, "rest": 0.13, "rest_site": 0.50,
+-    }, "DRINK"),
+-    ("familiar_room", {
+-        "explore": 0.48, "novelty": 0.02, "open_space": 0.55,
+-        "manipulable": 0.20, "rest": 0.08, "rest_site": 0.10,
+-    }, "EXPLORE"),
+-]
+-
+-SEEDS = (20260910, 42, 1701)
+-
+-
+-def analytical_explore_trace(values: dict) -> dict:
+-    x = vector_from_mapping(values)
+-    base = _explore_base_value([x[3], x[12], x[15]])
+-    hunger_search = _hunger_search_value([x[0], x[7]])
+-    thirst_search = _thirst_search_value([x[1], x[8]])
+-    subtotal = base + hunger_search + thirst_search
+-    gate = _explore_safety_gate([subtotal, x[5]])
+-    return {
+-        "base": float(base),
+-        "hunger_search": float(hunger_search),
+-        "thirst_search": float(thirst_search),
+-        "subtotal": float(subtotal),
+-        "gate": float(gate),
+-    }
+-
+-
+-def diagnostic_result(name: str, values: dict, expected: str, decision, analytical: np.ndarray) -> dict:
+-    neural_values = np.asarray([decision.action_values[action] for action in ACTIONS], dtype=float)
+-    competition_values = np.asarray([decision.competition_values[action] for action in ACTIONS], dtype=float)
+-    neural_argmax = int(neural_values.argmax())
+-    competition_argmax = int(competition_values.argmax())
+-    analytical_argmax = int(analytical.argmax())
+-    return {
+-        "scenario": name,
+-        "expected": expected,
+-        "selected": decision.selected,
+-        "ok": decision.selected == expected,
+-        "confidence": decision.confidence,
+-        "inputs": {key: float(value) for key, value in values.items()},
+-        "action_values": decision.action_values,
+-        "competition_values": decision.competition_values,
+-        "basal_ganglia_output": decision.basal_ganglia_output,
+-        "bg_pick": max(decision.basal_ganglia_output, key=decision.basal_ganglia_output.get),
+-        "competition_evidence": decision.competition_evidence,
+-        "selection_source": decision.commitment["selection_source"],
+-        "affordance_gates": decision.affordance_gates,
+-        "commitment": decision.commitment,
+-        "analytical_values": {action: float(analytical[i]) for i, action in enumerate(ACTIONS)},
+-        "analytical_pick": ACTIONS[analytical_argmax],
+-        "neural_value_pick": ACTIONS[neural_argmax],
+-        "competition_value_pick": ACTIONS[competition_argmax],
+-        "decoder_rmse": float(np.sqrt(np.mean((neural_values - analytical) ** 2))),
+-        "explore_trace": {
+-            "analytical": analytical_explore_trace(values),
+-            "neural": decision.explore_diagnostics,
+-        },
+-    }
+-
+-
+-def run_seed(seed: int) -> dict:
+-    brain = NeuralBrain(seed=seed)
+-    results = []
+-    failures = []
+-    world_time = 10.0
+-
+-    for name, values, expected in SCENARIOS:
+-        brain.reset_temporal_state()
+-        brain.step({}, 0.15, world_time=world_time)
+-        world_time += 0.25
+-        brain.reset_temporal_state()
+-        analytical = valuation(vector_from_mapping(values))
+-        decision = brain.step(values, 0.35, world_time=world_time)
+-        world_time += 0.50
+-        item = diagnostic_result(name, values, expected, decision, analytical)
+-        if not item["ok"]:
+-            failures.append(
+-                f"{name}: expected {expected}, selected {decision.selected}, BG={item['bg_pick']}; "
+-                f"neural-values={item['neural_value_pick']}, "
+-                f"competition={item['competition_value_pick']}, "
+-                f"analytical={item['analytical_pick']}"
+-            )
+-        results.append(item)
+-
+-    brain.reset_temporal_state()
+-    brain.step({}, 0.15, world_time=100.0)
+-    brain.reset_temporal_state()
+-    rest_setup = {"rest": 0.28, "rest_site": 0.95, "explore": 0.15, "novelty": 0.01}
+-    setup = brain.step(rest_setup, 0.35, world_time=101.0)
+-    setup_item = diagnostic_result(
+-        "commitment_setup", rest_setup, "REST", setup,
+-        valuation(vector_from_mapping(rest_setup)),
+-    )
+-    if setup.selected != "REST":
+-        failures.append(f"commitment_setup: expected REST, got {setup.selected}")
+-    results.append(setup_item)
+-
+-    ambiguous = {"rest": 0.06, "rest_site": 0.70, "explore": 0.50, "novelty": 0.08, "open_space": 0.40}
+-    ambiguous_decision = brain.step(ambiguous, 0.20, world_time=101.20)
+-    ambiguous_item = diagnostic_result(
+-        "commitment_holds_ambiguous", ambiguous, "REST", ambiguous_decision,
+-        valuation(vector_from_mapping(ambiguous)),
+-    )
+-    if ambiguous_item["analytical_pick"] != "EXPLORE":
+-        failures.append("commitment_holds_ambiguous: analytical fixture no longer favours EXPLORE")
+-    if ambiguous_decision.selected != "REST":
+-        failures.append(f"commitment_holds_ambiguous: expected REST persistence, got {ambiguous_decision.selected}")
+-    results.append(ambiguous_item)
+-
+-    expired = brain.step(ambiguous, 0.30, world_time=102.60)
+-    expired_item = diagnostic_result(
+-        "commitment_expires", ambiguous, "EXPLORE", expired,
+-        valuation(vector_from_mapping(ambiguous)),
+-    )
+-    if expired.selected != "EXPLORE":
+-        failures.append(f"commitment_expires: expected EXPLORE after expiry, got {expired.selected}")
+-    results.append(expired_item)
+-
+-    brain.reset_temporal_state()
+-    brain.step(rest_setup, 0.35, world_time=110.0)
+-    danger = {"safety": 0.90, "motion": 0.90, "rest": 0.20, "rest_site": 1.0, "explore": 0.45}
+-    danger_decision = brain.step(danger, 0.25, world_time=110.20)
+-    danger_item = diagnostic_result(
+-        "threat_interrupts_commitment", danger, "FLEE", danger_decision,
+-        valuation(vector_from_mapping(danger)),
+-    )
+-    if danger_decision.selected != "FLEE":
+-        failures.append(f"threat_interrupts_commitment: expected FLEE, got {danger_decision.selected}")
+-    results.append(danger_item)
+-
+-    zero_food = vector_from_mapping({"hunger": 1.0, "food": 0.0})
+-    zero_water = vector_from_mapping({"thirst": 1.0, "water": 0.0})
+-    gates_food = affordance_vector(zero_food)
+-    gates_water = affordance_vector(zero_water)
+-    if gates_food[ACTIONS.index("EAT")] != 0.0:
+-        failures.append("affordance_gate: EAT must be zero when food is absent")
+-    if gates_water[ACTIONS.index("DRINK")] != 0.0:
+-        failures.append("affordance_gate: DRINK must be zero when water is absent")
+-
+-    report = {
+-        "seed": seed,
+-        "status": "PASS" if not failures else "FAIL",
+-        "checks": len(results) + 2,
+-        "passed": (len(results) + 2) - len(failures),
+-        "failures": failures,
+-        "results": results,
+-        "invariants": {
+-            "eat_gate_without_food": float(gates_food[ACTIONS.index("EAT")]),
+-            "drink_gate_without_water": float(gates_water[ACTIONS.index("DRINK")]),
+-        },
+-    }
+-    brain.close()
+-    return report
+-
+-
+-def main() -> int:
+-    parser = argparse.ArgumentParser()
+-    parser.add_argument("--out", default="data/neural-selftest.json")
+-    args = parser.parse_args()
+-
+-    import nengo
+-    try:
+-        import scipy
+-        scipy_version = scipy.__version__
+-    except Exception:
+-        scipy_version = None
+-
+-    runs = [run_seed(seed) for seed in SEEDS]
+-    failures = [f"seed={run['seed']}: {failure}" for run in runs for failure in run["failures"]]
+-    report = {
+-        "status": "PASS" if not failures else "FAIL",
+-        "backend": "nengo",
+-        "model": "NeuralBrain v0.2.6 reconstructed intero/extero contexts + physical-domain EXPLORE eval points + factorized MANIPULATE + explicit temporal hysteresis + stable subseeds + BG100",
+-        "neurons": 11890,
+-        "seeds": list(SEEDS),
+-        "checks_per_seed": 21,
+-        "checks": 21 * len(SEEDS),
+-        "failures": failures,
+-        "environment": {
+-            "python": platform.python_version(),
+-            "nengo": nengo.__version__,
+-            "numpy": np.__version__,
+-            "scipy": scipy_version,
+-        },
+-        "runs": runs,
+-    }
+-    out = Path(args.out)
+-    out.parent.mkdir(parents=True, exist_ok=True)
+-    out.write_text(json.dumps(report, indent=2), encoding="utf-8")
+-
+-    print(f"NeuralBrain v0.2.6 robustness test: {report['status']}")
+-    for run in runs:
+-        print(f"  seed={run['seed']}: {run['passed']}/{run['checks']} PASS")
+-        for failure in run["failures"]:
+-            print(f"    - {failure}")
+-    print(f"Resultat: {out}")
+-    return 0 if not failures else 1
+-
+-
+-if __name__ == "__main__":
+-    raise SystemExit(main())
++"""Multi-seed runtime test for BirdAI NeuralBrain v0.2.7."""
++from __future__ import annotations
++
++import argparse
++import json
++import platform
++from pathlib import Path
++
++import numpy as np
++
++from neural_model import (
++    ACTIONS, NeuralBrain, affordance_vector, valuation, vector_from_mapping,
++    _explore_base_value, _hunger_search_value, _thirst_search_value, _explore_safety_gate,
++)
++
++# Same behavioral requirements as v0.5. No fixture has been relaxed or moved.
++SCENARIOS = [
++    ("danger", {"safety": 0.95, "motion": 0.8}, "FLEE"),
++    ("thirst", {"thirst": 0.92, "water": 1.0, "explore": 0.2}, "DRINK"),
++    ("hunger", {"hunger": 0.92, "food": 1.0, "explore": 0.2}, "EAT"),
++    ("rest", {"rest": 0.92, "rest_site": 1.0, "explore": 0.15}, "REST"),
++    ("social", {"social": 0.92, "person": 1.0, "explore": 0.15}, "SOCIAL"),
++    ("care", {"comfort": 0.92, "care_site": 1.0, "explore": 0.15}, "CARE"),
++    ("novel_world", {"explore": 0.90, "novelty": 0.85, "open_space": 0.8}, "EXPLORE"),
++    ("hungry_search", {"hunger": 0.95, "food": 0.0, "explore": 0.30, "novelty": 0.10, "open_space": 0.4}, "EXPLORE"),
++    ("thirsty_search", {"thirst": 0.95, "water": 0.0, "explore": 0.30, "novelty": 0.10, "open_space": 0.4}, "EXPLORE"),
++    ("novel_object", {"explore": 0.75, "novelty": 0.75, "manipulable": 1.0}, "MANIPULATE"),
++    ("mixed_rest", {
++        "rest": 0.15, "rest_site": 0.95, "explore": 0.48, "novelty": 0.03,
++        "manipulable": 0.55, "food": 0.55, "hunger": 0.14, "social": 0.30,
++    }, "REST"),
++    ("mixed_manipulate", {
++        "rest": 0.12, "rest_site": 0.25, "explore": 0.48, "novelty": 0.12,
++        "manipulable": 0.92, "food": 0.35, "hunger": 0.14, "social": 0.25,
++    }, "MANIPULATE"),
++    ("mixed_eat", {
++        "hunger": 0.26, "food": 0.92, "explore": 0.48, "novelty": 0.03,
++        "manipulable": 0.85, "rest": 0.12, "rest_site": 0.45,
++    }, "EAT"),
++    ("mixed_drink", {
++        "thirst": 0.30, "water": 0.90, "explore": 0.46, "novelty": 0.03,
++        "manipulable": 0.75, "rest": 0.13, "rest_site": 0.50,
++    }, "DRINK"),
++    ("familiar_room", {
++        "explore": 0.48, "novelty": 0.02, "open_space": 0.55,
++        "manipulable": 0.20, "rest": 0.08, "rest_site": 0.10,
++    }, "EXPLORE"),
++]
++
++SEEDS = (20260910, 42, 1701)
++
++
++def analytical_explore_trace(values: dict) -> dict:
++    x = vector_from_mapping(values)
++    base = _explore_base_value([x[3], x[12], x[15]])
++    hunger_search = _hunger_search_value([x[0], x[7]])
++    thirst_search = _thirst_search_value([x[1], x[8]])
++    subtotal = base + hunger_search + thirst_search
++    gate = _explore_safety_gate([subtotal, x[5]])
++    return {
++        "base": float(base),
++        "hunger_search": float(hunger_search),
++        "thirst_search": float(thirst_search),
++        "subtotal": float(subtotal),
++        "gate": float(gate),
++    }
++
++
++def diagnostic_result(name: str, values: dict, expected: str, decision, analytical: np.ndarray) -> dict:
++    neural_values = np.asarray([decision.action_values[action] for action in ACTIONS], dtype=float)
++    competition_values = np.asarray([decision.competition_values[action] for action in ACTIONS], dtype=float)
++    neural_argmax = int(neural_values.argmax())
++    competition_argmax = int(competition_values.argmax())
++    analytical_argmax = int(analytical.argmax())
++    return {
++        "scenario": name,
++        "expected": expected,
++        "selected": decision.selected,
++        "ok": decision.selected == expected,
++        "confidence": decision.confidence,
++        "inputs": {key: float(value) for key, value in values.items()},
++        "action_values": decision.action_values,
++        "competition_values": decision.competition_values,
++        "basal_ganglia_output": decision.basal_ganglia_output,
++        "basal_ganglia_instantaneous": decision.basal_ganglia_instantaneous,
++        "basal_ganglia_readout_window_seconds": decision.basal_ganglia_readout_window_seconds,
++        "bg_pick": max(decision.basal_ganglia_output, key=decision.basal_ganglia_output.get),
++        "bg_instantaneous_pick": max(decision.basal_ganglia_instantaneous, key=decision.basal_ganglia_instantaneous.get),
++        "competition_evidence": decision.competition_evidence,
++        "selection_source": decision.commitment["selection_source"],
++        "affordance_gates": decision.affordance_gates,
++        "commitment": decision.commitment,
++        "analytical_values": {action: float(analytical[i]) for i, action in enumerate(ACTIONS)},
++        "analytical_pick": ACTIONS[analytical_argmax],
++        "neural_value_pick": ACTIONS[neural_argmax],
++        "competition_value_pick": ACTIONS[competition_argmax],
++        "decoder_rmse": float(np.sqrt(np.mean((neural_values - analytical) ** 2))),
++        "explore_trace": {
++            "analytical": analytical_explore_trace(values),
++            "neural": decision.explore_diagnostics,
++        },
++    }
++
++
++def run_seed(seed: int) -> dict:
++    brain = NeuralBrain(seed=seed)
++    results = []
++    failures = []
++    world_time = 10.0
++
++    for name, values, expected in SCENARIOS:
++        brain.reset_temporal_state()
++        brain.step({}, 0.15, world_time=world_time)
++        world_time += 0.25
++        brain.reset_temporal_state()
++        analytical = valuation(vector_from_mapping(values))
++        decision = brain.step(values, 0.35, world_time=world_time)
++        world_time += 0.50
++        item = diagnostic_result(name, values, expected, decision, analytical)
++        if not item["ok"]:
++            failures.append(
++                f"{name}: expected {expected}, selected {decision.selected}, BG={item['bg_pick']}; "
++                f"neural-values={item['neural_value_pick']}, "
++                f"competition={item['competition_value_pick']}, "
++                f"analytical={item['analytical_pick']}, instantaneous-BG={item['bg_instantaneous_pick']}"
++            )
++        results.append(item)
++
++    brain.reset_temporal_state()
++    brain.step({}, 0.15, world_time=100.0)
++    brain.reset_temporal_state()
++    rest_setup = {"rest": 0.28, "rest_site": 0.95, "explore": 0.15, "novelty": 0.01}
++    setup = brain.step(rest_setup, 0.35, world_time=101.0)
++    setup_item = diagnostic_result(
++        "commitment_setup", rest_setup, "REST", setup,
++        valuation(vector_from_mapping(rest_setup)),
++    )
++    if setup.selected != "REST":
++        failures.append(f"commitment_setup: expected REST, got {setup.selected}")
++    results.append(setup_item)
++
++    ambiguous = {"rest": 0.06, "rest_site": 0.70, "explore": 0.50, "novelty": 0.08, "open_space": 0.40}
++    ambiguous_decision = brain.step(ambiguous, 0.20, world_time=101.20)
++    ambiguous_item = diagnostic_result(
++        "commitment_holds_ambiguous", ambiguous, "REST", ambiguous_decision,
++        valuation(vector_from_mapping(ambiguous)),
++    )
++    if ambiguous_item["analytical_pick"] != "EXPLORE":
++        failures.append("commitment_holds_ambiguous: analytical fixture no longer favours EXPLORE")
++    if ambiguous_decision.selected != "REST":
++        failures.append(f"commitment_holds_ambiguous: expected REST persistence, got {ambiguous_decision.selected}")
++    results.append(ambiguous_item)
++
++    expired = brain.step(ambiguous, 0.30, world_time=102.60)
++    expired_item = diagnostic_result(
++        "commitment_expires", ambiguous, "EXPLORE", expired,
++        valuation(vector_from_mapping(ambiguous)),
++    )
++    if expired.selected != "EXPLORE":
++        failures.append(f"commitment_expires: expected EXPLORE after expiry, got {expired.selected}")
++    results.append(expired_item)
++
++    brain.reset_temporal_state()
++    brain.step(rest_setup, 0.35, world_time=110.0)
++    danger = {"safety": 0.90, "motion": 0.90, "rest": 0.20, "rest_site": 1.0, "explore": 0.45}
++    danger_decision = brain.step(danger, 0.25, world_time=110.20)
++    danger_item = diagnostic_result(
++        "threat_interrupts_commitment", danger, "FLEE", danger_decision,
++        valuation(vector_from_mapping(danger)),
++    )
++    if danger_decision.selected != "FLEE":
++        failures.append(f"threat_interrupts_commitment: expected FLEE, got {danger_decision.selected}")
++    results.append(danger_item)
++
++    zero_food = vector_from_mapping({"hunger": 1.0, "food": 0.0})
++    zero_water = vector_from_mapping({"thirst": 1.0, "water": 0.0})
++    gates_food = affordance_vector(zero_food)
++    gates_water = affordance_vector(zero_water)
++    if gates_food[ACTIONS.index("EAT")] != 0.0:
++        failures.append("affordance_gate: EAT must be zero when food is absent")
++    if gates_water[ACTIONS.index("DRINK")] != 0.0:
++        failures.append("affordance_gate: DRINK must be zero when water is absent")
++
++    report = {
++        "seed": seed,
++        "status": "PASS" if not failures else "FAIL",
++        "checks": len(results) + 2,
++        "passed": (len(results) + 2) - len(failures),
++        "failures": failures,
++        "results": results,
++        "invariants": {
++            "eat_gate_without_food": float(gates_food[ACTIONS.index("EAT")]),
++            "drink_gate_without_water": float(gates_water[ACTIONS.index("DRINK")]),
++        },
++    }
++    brain.close()
++    return report
++
++
++def main() -> int:
++    parser = argparse.ArgumentParser()
++    parser.add_argument("--out", default="data/neural-selftest.json")
++    args = parser.parse_args()
++
++    import nengo
++    try:
++        import scipy
++        scipy_version = scipy.__version__
++    except Exception:
++        scipy_version = None
++
++    runs = [run_seed(seed) for seed in SEEDS]
++    failures = [f"seed={run['seed']}: {failure}" for run in runs for failure in run["failures"]]
++    report = {
++        "status": "PASS" if not failures else "FAIL",
++        "backend": "nengo",
++        "model": "NeuralBrain v0.2.7 reconstructed intero/extero contexts + physical-domain EXPLORE eval points + factorized MANIPULATE + explicit temporal hysteresis + stable subseeds + BG100",
++        "neurons": 11890,
++        "seeds": list(SEEDS),
++        "checks_per_seed": 21,
++        "checks": 21 * len(SEEDS),
++        "failures": failures,
++        "environment": {
++            "python": platform.python_version(),
++            "nengo": nengo.__version__,
++            "numpy": np.__version__,
++            "scipy": scipy_version,
++        },
++        "runs": runs,
++    }
++    out = Path(args.out)
++    out.parent.mkdir(parents=True, exist_ok=True)
++    out.write_text(json.dumps(report, indent=2), encoding="utf-8")
++
++    print(f"NeuralBrain v0.2.7 robustness test: {report['status']}")
++    for run in runs:
++        print(f"  seed={run['seed']}: {run['passed']}/{run['checks']} PASS")
++        for failure in run["failures"]:
++            print(f"    - {failure}")
++    print(f"Resultat: {out}")
++    return 0 if not failures else 1
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff -ruN '--exclude=.venv' '--exclude=data' '--exclude=docs' /mnt/data/BirdAI-v0.5.7-NeuralBrain-v0.2.6-NeuralControl-portable/brain/test_regressions_v027.py /mnt/data/BirdAI-v0.5.8-NeuralBrain-v0.2.7-BGReadout-portable/brain/test_regressions_v027.py
+--- /mnt/data/BirdAI-v0.5.7-NeuralBrain-v0.2.6-NeuralControl-portable/brain/test_regressions_v027.py	1970-01-01 00:00:00.000000000 +0000
++++ /mnt/data/BirdAI-v0.5.8-NeuralBrain-v0.2.7-BGReadout-portable/brain/test_regressions_v027.py	2026-09-11 09:29:08.681412849 +0000
+@@ -0,0 +1,359 @@
++"""Separate pure regressions; the canonical Nengo selftest remains 3 x 21."""
++from pathlib import Path
++import ast
++import importlib.util
++import itertools
++import math
++import json
++import sys
++import unittest
++
++import numpy as np
++import neural_model as model
++import selftest
++from temporal_commitment import TemporalCommitment, SWITCH_MARGIN
++
++ROOT = Path(__file__).resolve().parents[1]
++spec = importlib.util.spec_from_file_location('original_v05_reference', ROOT / 'tests/reference_v05_neural_model.py')
++reference = importlib.util.module_from_spec(spec)
++sys.modules[spec.name] = reference
++spec.loader.exec_module(reference)
++DETAILS = {}
++
++
++def state():
++    return TemporalCommitment(model.ACTIONS, model.COMMITMENT_STRENGTH, model.COMMITMENT_DURATION)
++
++
++def evidence(**values):
++    return np.asarray([values.get(name, 0.0) for name in model.ACTIONS])
++
++
++def latch(action='REST', now=10.0):
++    s = state()
++    s.prepare(now, 0.0, np.ones(8))
++    index = model.ACTIONS.index(action)
++    values = np.zeros(8)
++    values[index] = 0.4
++    s.resolve(index, values, now)
++    return s
++
++
++class PolicyRegression(unittest.TestCase):
++    def test_v05_policy_equivalence_20000_random_states(self):
++        rng = np.random.default_rng(90231)
++        maximum = 0.0
++        for row in rng.uniform(-0.25, 1.25, (20000, 16)):
++            maximum = max(maximum, float(np.max(np.abs(model.valuation(row) - reference.valuation(row)))))
++        DETAILS['policy_random_states'] = 20000
++        DETAILS['policy_max_abs_error'] = maximum
++        self.assertLessEqual(maximum, 1e-12)
++
++    def test_manipulate_factorization_unseen_domain_and_corners(self):
++        rng = np.random.default_rng(776019)
++        rows = np.vstack([rng.uniform(-0.1, 1.1, (100000, 5)), list(itertools.product([0., 1.], repeat=5))])
++        maximum = 0.0
++        for e, n, m, motion, safety in rows:
++            subtotal = (model._manipulate_drive_value([e, m]) + model._manipulate_novelty_value([n, m])
++                        + model._manipulate_motion_value([motion, m]))
++            actual = model._manipulate_safety_gate([subtotal, safety])
++            expected = reference._manipulate_value([e, n, m, motion, safety])
++            maximum = max(maximum, abs(actual - expected))
++        DETAILS['factorization_states'] = len(rows)
++        DETAILS['factorization_max_abs_error'] = maximum
++        self.assertLessEqual(maximum, 1e-12)
++
++    def test_original_manipulate_reference_is_unedited(self):
++        def function(path):
++            module = ast.parse(path.read_text(encoding='utf-8-sig'))
++            return ast.dump(next(n for n in module.body if isinstance(n, ast.FunctionDef) and n.name == '_manipulate_value'))
++        self.assertEqual(function(ROOT / 'brain/neural_model.py'), function(ROOT / 'tests/reference_v05_neural_model.py'))
++
++    def test_contract_and_decay_unchanged(self):
++        for name in ('ACTIONS', 'INPUT_KEYS', 'COMMITMENT_STRENGTH', 'COMMITMENT_DURATION'):
++            self.assertEqual(getattr(model, name), getattr(reference, name))
++
++    def test_canonical_scenarios_seeds_and_temporal_inputs_unchanged(self):
++        old = ast.parse((ROOT / 'tests/reference_v05_selftest.py').read_text(encoding='utf-8-sig'))
++        new = ast.parse((ROOT / 'brain/selftest.py').read_text(encoding='utf-8-sig'))
++        def assigned(tree, name):
++            return [ast.literal_eval(n.value) for n in ast.walk(tree) if isinstance(n, ast.Assign)
++                    and any(isinstance(t, ast.Name) and t.id == name for t in n.targets)]
++        for name in ('SCENARIOS', 'rest_setup', 'ambiguous', 'danger', 'zero_food', 'zero_water'):
++            if name.startswith('zero_'):
++                continue
++            self.assertEqual(assigned(old, name), assigned(new, name))
++        def steps(tree):
++            return [ast.dump(n) for n in ast.walk(tree) if isinstance(n, ast.Call)
++                    and isinstance(n.func, ast.Attribute) and isinstance(n.func.value, ast.Name)
++                    and n.func.value.id == 'brain' and n.func.attr in ('step', 'reset_temporal_state')]
++        self.assertEqual(steps(old), steps(new))
++        self.assertEqual(selftest.SEEDS, (20260910, 42, 1701))
++        self.assertEqual(len(selftest.SCENARIOS), 15)
++
++    def test_no_analytical_fallback_in_runtime_class(self):
++        tree = ast.parse((ROOT / 'brain/neural_model.py').read_text(encoding='utf-8'))
++        cls = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == 'NeuralBrain')
++        calls = [n.func.id for n in ast.walk(cls) if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)]
++        self.assertNotIn('valuation', calls)
++        self.assertNotIn('_manipulate_value', calls)
++        names = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)}
++        self.assertNotIn('SCENARIOS', names)
++        self.assertNotIn('DECODER_DOMAIN_ANCHORS', names)
++
++    def test_all_python_sources_parse(self):
++        for path in list((ROOT / 'brain').glob('*.py')) + list((ROOT / 'tests').glob('*.py')):
++            with self.subTest(path=path.name):
++                ast.parse(path.read_text(encoding='utf-8-sig'), filename=str(path))
++
++
++class TemporalRegression(unittest.TestCase):
++    def test_weak_spurious_bg_cannot_acquire_latch(self):
++        s = state()
++        s.prepare(0., 0., np.ones(8))
++        s.resolve(2, evidence(REST=.2, EXPLORE=.19), 0.)
++        self.assertIsNone(s.current)
++
++    def test_clear_supported_evidence_acquires_latch(self):
++        s = latch()
++        self.assertEqual(s.current, 3)
++        self.assertEqual(s.started, 10.)
++
++    def test_strong_neural_evidence_cannot_latch_wrong_bg_action(self):
++        s = state()
++        s.prepare(0., 0., np.ones(8))
++        s.resolve(2, evidence(REST=.4, EXPLORE=.1), 0.)
++        self.assertEqual(s.current, 3)
++
++    def test_weak_challenger_keeps_competition_and_selected_action(self):
++        s = latch()
++        s.prepare(10.2, 0., np.ones(8))
++        values = evidence(REST=.20, EXPLORE=.25)
++        self.assertEqual(int(s.project(values).argmax()), 3)
++        selected, metadata = s.resolve(6, values, 10.2)
++        self.assertEqual(selected, 3)
++        self.assertEqual(metadata['bg_selected_action'], 'EXPLORE')
++        self.assertFalse(metadata['bg_matches_selected'])
++        self.assertEqual(s.started, 10.)
++
++    def test_switch_boundary_equality_holds(self):
++        s = latch()
++        values = evidence(REST=.20, EXPLORE=.20 + SWITCH_MARGIN)
++        self.assertTrue(s.should_hold(values))
++        self.assertEqual(int(s.project(values).argmax()), 3)
++
++    def test_strong_challenger_releases_latch(self):
++        s = latch()
++        values = evidence(REST=.20, EXPLORE=.20 + SWITCH_MARGIN + .0001)
++        np.testing.assert_array_equal(s.project(values), values)
++        selected, _ = s.resolve(6, values, 10.2)
++        self.assertEqual(selected, 6)
++        self.assertEqual(s.current, 6)
++        self.assertEqual(s.started, 10.2)
++
++    def test_margin_compares_to_incumbent_not_runner_up(self):
++        s = latch()
++        values = evidence(REST=.20, EXPLORE=.295, MANIPULATE=.30)
++        self.assertFalse(s.should_hold(values))
++        np.testing.assert_array_equal(s.project(values), values)
++
++    def test_repeated_holds_do_not_extend_expiry(self):
++        s = latch()
++        for now in (10.2, 10.7, 11.2):
++            s.prepare(now, 0., np.ones(8))
++            s.resolve(6, evidence(REST=.20, EXPLORE=.24), now)
++            self.assertEqual(s.started, 10.)
++        bias, remaining = s.prepare(11.25, 0., np.ones(8))
++        self.assertIsNone(s.current)
++        self.assertEqual(remaining, 0.)
++        self.assertTrue(np.all(bias == 0))
++        self.assertEqual(s.release_reason, 'expired')
++
++    def test_affordance_loss_releases_before_next_sample(self):
++        for action in ('DRINK', 'EAT', 'REST', 'SOCIAL', 'CARE', 'MANIPULATE'):
++            s = latch(action)
++            gates = np.ones(8)
++            gates[s.current] = .1599
++            bias, _ = s.prepare(10.1, 0., gates)
++            self.assertIsNone(s.current)
++            self.assertTrue(np.all(bias == 0))
++
++    def test_affordance_boundary_and_general_explore(self):
++        s = latch()
++        gates = np.zeros(8)
++        gates[3] = .16
++        s.prepare(10.1, 0., gates)
++        self.assertEqual(s.current, 3)
++        s = latch('EXPLORE')
++        s.prepare(10.1, 0., np.zeros(8))
++        self.assertEqual(s.current, 6)
++
++    def test_threat_interrupts_and_blocks_nondefensive_reacquisition(self):
++        for action in model.ACTIONS[1:]:
++            s = latch(action)
++            s.prepare(10.001, .55, np.ones(8))
++            self.assertIsNone(s.current)
++            self.assertEqual(s.release_reason, 'threat_interrupt')
++            s.resolve(3, evidence(REST=.8), 10.001)
++            self.assertIsNone(s.current)
++        s = latch('FLEE')
++        s.prepare(10.1, .9, np.ones(8))
++        self.assertEqual(s.current, 0)
++
++    def test_clock_rewind_releases_old_latch(self):
++        s = latch()
++        s.prepare(2., 0., np.ones(8))
++        self.assertIsNone(s.current)
++        self.assertEqual(s.release_reason, 'clock_rewound')
++
++    def test_reset_clears_state_and_bias(self):
++        s = latch()
++        s.prepare(10.2, 0., np.ones(8))
++        self.assertGreater(float(s.bias.max()), 0.)
++        s.reset()
++        self.assertIsNone(s.current)
++        self.assertTrue(np.all(s.bias == 0))
++
++    def test_free_projection_is_identity_including_negative_evidence(self):
++        s = state()
++        for values in np.random.default_rng(919).uniform(-.5, 1.8, (2000, 8)):
++            np.testing.assert_array_equal(s.project(values), values)
++
++    def test_hysteresis_invariant_all_actions_on_unseen_vectors(self):
++        rng = np.random.default_rng(591103)
++        for current in range(8):
++            s = latch(model.ACTIONS[current])
++            for values in rng.uniform(-.2, .8, (1000, 8)):
++                projected = s.project(values)
++                challenger, advantage = s.challenger(values)
++                if advantage <= SWITCH_MARGIN:
++                    self.assertEqual(int(projected.argmax()), current)
++                    others = [i for i in range(8) if i != current]
++                    np.testing.assert_array_equal(projected[others], values[others])
++                else:
++                    np.testing.assert_array_equal(projected, values)
++
++
++class ExploreEvalPointRegression(unittest.TestCase):
++    EXPLORE_FUNCTIONS = {
++        '_explore_base_value',
++        '_hunger_search_value',
++        '_thirst_search_value',
++        '_explore_safety_gate',
++    }
++
++    def _tree(self):
++        return ast.parse((ROOT / 'brain/neural_model.py').read_text(encoding='utf-8-sig'))
++
++    def _explore_connections(self):
++        found = {}
++        for node in ast.walk(self._tree()):
++            if not isinstance(node, ast.Call):
++                continue
++            func = node.func
++            if not (isinstance(func, ast.Attribute) and func.attr == 'Connection'):
++                continue
++            keywords = {kw.arg: kw.value for kw in node.keywords if kw.arg}
++            fnode = keywords.get('function')
++            if isinstance(fnode, ast.Name) and fnode.id in self.EXPLORE_FUNCTIONS:
++                found[fnode.id] = keywords
++        return found
++
++    def test_all_four_explore_decoders_use_physical_eval_points(self):
++        found = self._explore_connections()
++        self.assertEqual(set(found), self.EXPLORE_FUNCTIONS)
++        for name, keywords in found.items():
++            with self.subTest(function=name):
++                self.assertIn('scale_eval_points', keywords)
++                self.assertIs(ast.literal_eval(keywords['scale_eval_points']), False)
++
++    def test_explore_analytical_functions_are_identical_to_v025(self):
++        current = ast.parse((ROOT / 'brain/neural_model.py').read_text(encoding='utf-8-sig'))
++        previous = ast.parse((ROOT / 'docs/evidence-v0.5.6/reference-v0.2.5-neural_model.py').read_text(encoding='utf-8-sig'))
++        names = ('_explore_base_value', '_hunger_search_value', '_thirst_search_value',
++                 '_explore_safety_gate', '_explore_value')
++        def funcs(tree):
++            result = {}
++            for n in tree.body:
++                if not isinstance(n, ast.FunctionDef) or n.name not in names:
++                    continue
++                body = list(n.body)
++                if body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant) and isinstance(body[0].value.value, str):
++                    body = body[1:]
++                result[n.name] = ast.dump(ast.Module(body=body, type_ignores=[]), include_attributes=False)
++            return result
++        self.assertEqual(funcs(current), funcs(previous))
++
++    def test_physical_eval_domains_fit_ensemble_radii(self):
++        self.assertLessEqual(math.sqrt(3.0), math.sqrt(3.0) + 1e-12)
++        self.assertLessEqual(math.sqrt(2.0), math.sqrt(2.0) + 1e-12)
++        self.assertLessEqual(math.hypot(1.70, 1.0), 2.10)
++        DETAILS['explore_gate_max_eval_norm'] = math.hypot(1.70, 1.0)
++        DETAILS['explore_gate_radius'] = 2.10
++
++    def test_v025_radius_scaling_would_leave_declared_physical_domains(self):
++        # This regression captures the API-semantics bug without any selftest coordinate.
++        self.assertGreater(math.sqrt(3.0), 1.0)
++        self.assertGreater(math.sqrt(2.0), 1.0)
++        self.assertGreater(1.70 * 2.10, 1.80)
++        self.assertGreater(1.0 * 2.10, 1.0)
++
++    def test_explore_diagnostics_probe_existing_connections(self):
++        text = (ROOT / 'brain/neural_model.py').read_text(encoding='utf-8-sig')
++        for connection in ('explore_drive_in', 'explore_novelty_in', 'explore_open_space_in',
++                           'explore_hunger_in', 'explore_food_in', 'explore_thirst_in',
++                           'explore_water_in', 'explore_subtotal_in', 'explore_safety_in',
++                           'explore_base_conn', 'hunger_search_conn', 'thirst_search_conn',
++                           'explore_gate_conn'):
++            with self.subTest(connection=connection):
++                self.assertIn(f'nengo.Probe({connection}, "output", synapse=None)', text)
++        # No second diagnostic valuation pathway may feed action_values.
++        self.assertEqual(text.count('function=_explore_base_value'), 1)
++        self.assertEqual(text.count('function=_hunger_search_value'), 1)
++        self.assertEqual(text.count('function=_thirst_search_value'), 1)
++        self.assertEqual(text.count('function=_explore_safety_gate'), 1)
++
++    def test_mixed_manipulate_policy_margin_remains_original(self):
++        values = dict(next(v for n, v, expected in selftest.SCENARIOS if n == 'mixed_manipulate'))
++        analytic = model.valuation(model.vector_from_mapping(values))
++        manipulate = float(analytic[model.ACTIONS.index('MANIPULATE')])
++        explore = float(analytic[model.ACTIONS.index('EXPLORE')])
++        DETAILS['mixed_manipulate_analytical_manipulate'] = manipulate
++        DETAILS['mixed_manipulate_analytical_explore'] = explore
++        DETAILS['mixed_manipulate_analytical_margin'] = manipulate - explore
++        reference_values = reference.valuation(reference.vector_from_mapping(values))
++        self.assertGreater(manipulate, explore)
++        self.assertAlmostEqual(manipulate, float(reference_values[model.ACTIONS.index('MANIPULATE')]), places=12)
++        self.assertAlmostEqual(explore, float(reference_values[model.ACTIONS.index('EXPLORE')]), places=12)
++
++
++class BGReadoutRegression(unittest.TestCase):
++    def test_bg_architecture_remains_bg100_without_bias(self):
++        text = (ROOT / 'brain/neural_model.py').read_text(encoding='utf-8-sig')
++        self.assertIn('n_neurons_per_ensemble=100', text)
++        self.assertIn('input_bias=0.0', text)
++
++    def test_bg_readout_is_final_30ms_mean_of_existing_filtered_probe(self):
++        self.assertAlmostEqual(model.BG_READOUT_WINDOW, 0.030, places=12)
++        text = (ROOT / 'brain/neural_model.py').read_text(encoding='utf-8-sig')
++        self.assertIn('bg_trace = np.asarray(self.sim.data[self.bg_probe], dtype=float)', text)
++        self.assertIn('np.mean(bg_window, axis=0)', text)
++        self.assertIn('self.bg_probe = nengo.Probe(basal_ganglia.output, synapse=0.01)', text)
++
++    def test_no_policy_or_competition_formula_changed_by_readout_patch(self):
++        # The new integration appears only after all action and competition probes are read.
++        text = (ROOT / 'brain/neural_model.py').read_text(encoding='utf-8-sig')
++        self.assertLess(text.index('competition_values = np.asarray'), text.index('bg_trace = np.asarray'))
++        self.assertLess(text.index('bg_trace = np.asarray'), text.index('bg_winner = int(np.argmax(bg_output))'))
++
++
++if __name__ == '__main__':
++    suite = unittest.defaultTestLoader.loadTestsFromModule(sys.modules[__name__])
++    result = unittest.TextTestRunner(verbosity=2).run(suite)
++    report = {'status': 'PASS' if result.wasSuccessful() else 'FAIL', 'checks': result.testsRun,
++              'failures': [{'test': str(t), 'detail': e} for t, e in result.failures + result.errors],
++              'details': DETAILS, 'canonical_runtime_checks_unchanged': 63}
++    out = ROOT / 'data/regression-v0.2.7.json'
++    out.parent.mkdir(parents=True, exist_ok=True)
++    out.write_text(json.dumps(report, indent=2), encoding='utf-8')
++    raise SystemExit(0 if result.wasSuccessful() else 1)

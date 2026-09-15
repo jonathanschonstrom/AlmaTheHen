@@ -1,1 +1,1 @@
-BirdAI v0.5.7 / NeuralBrain v0.2.6 - Neural Control experiment candidate
+BirdAI v0.5.8 / NeuralBrain v0.2.7 - Neural Control + BG Readout experiment candidate

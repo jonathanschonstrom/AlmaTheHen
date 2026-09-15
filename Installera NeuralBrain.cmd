@@ -33,12 +33,12 @@ echo Installerar Nengo 4.1.0, NumPy 2.2.6 och SciPy 1.18.1 lokalt ...
 if errorlevel 1 goto fail
 
 echo Kor NeuralBrain-sjalvtest ...
-"%~dp0brain\.venv\Scripts\python.exe" "%~dp0brain\selftest.py" --out "%~dp0data\neural-selftest-v0.2.6.json"
+"%~dp0brain\.venv\Scripts\python.exe" "%~dp0brain\selftest.py" --out "%~dp0data\neural-selftest-v0.2.7.json"
 if errorlevel 1 goto fail
 
 echo.
 echo KLART. NeuralBrain ar installerad och sjalvtestet passerade.
-echo Starta BirdAI normalt. NeuralBrain styr handlingsfamiljen i control mode.
+echo Starta BirdAI normalt. NeuralBrain v0.2.7 styr handlingsfamiljen i control mode.
 pause
 exit /b 0
 
@@ -52,6 +52,6 @@ exit /b 2
 :fail
 echo.
 echo INSTALLATION ELLER SJALVTEST MISSLYCKADES.
-echo Skicka texten i detta fonster och data\neural-selftest-v0.2.6.json om filen skapades.
+echo Skicka texten i detta fonster och data\neural-selftest-v0.2.7.json om filen skapades.
 pause
 exit /b 1
