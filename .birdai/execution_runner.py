@@ -442,6 +442,43 @@ def execution_diagnosis(contract: dict[str, Any] | None, fallback: str) -> dict[
     return result
 
 
+def authoritative_diagnosis(
+    *,
+    status: str,
+    contract: dict[str, Any] | None,
+    block_reason: str,
+) -> dict[str, str]:
+    if status == "PASS":
+        return {
+            "observed_failure": "none",
+            "likely_location": "not_applicable",
+            "hypothesis": (
+                "Authoritative validation passed and coordinator scope "
+                "checks found no blocking failure"
+            ),
+            "minimal_test": "authoritative validation already passed",
+        }
+
+    fallback = block_reason or "Execution did not prove the pass definition"
+    diagnosis = execution_diagnosis(contract, fallback)
+    diagnosis["observed_failure"] = fallback
+    return diagnosis
+
+
+def model_diagnosis_evidence(
+    contract: dict[str, Any] | None,
+) -> dict[str, Any]:
+    diagnosis = (
+        contract.get("diagnosis")
+        if isinstance(contract, dict)
+        else None
+    )
+    return {
+        "source": "model_contract",
+        "diagnosis": diagnosis if isinstance(diagnosis, dict) else None,
+    }
+
+
 def execution_strategy(contract: dict[str, Any] | None, outcome: str) -> list[dict[str, Any]]:
     strategy = contract.get("strategy") if isinstance(contract, dict) else None
 
@@ -1188,9 +1225,16 @@ def main() -> int:
 
     elapsed = round(time.monotonic() - started, 6)
 
-    diagnosis = execution_diagnosis(
-        execution_run.contract if execution_run else None,
-        block_reason or "No execution failure reported",
+    diagnosis = authoritative_diagnosis(
+        status=status,
+        contract=execution_run.contract if execution_run else None,
+        block_reason=block_reason,
+    )
+    atomic_json(
+        output_dir / "model-diagnosis.json",
+        model_diagnosis_evidence(
+            execution_run.contract if execution_run else None
+        ),
     )
     strategies = (
         execution_strategy(
