@@ -503,7 +503,7 @@ class NeuralBrain:
                 label="Basal ganglia action competition",
                 seed=sub_seed("basal_ganglia"),
             )
-            nengo.Connection(competition_values, basal_ganglia.input, synapse=0.008)
+            nengo.Connection(competition_values, basal_ganglia.input, synapse=0.008, transform=6.0)
 
             self.action_value_probe = nengo.Probe(action_values, synapse=0.01)
             self.competition_probe = nengo.Probe(competition_values, synapse=None)
