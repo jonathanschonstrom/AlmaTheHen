@@ -249,28 +249,33 @@ def _proposal_schema(
         for value in allowed_files
     ]
 
-    file_item = {
-        "type": "object",
-        "additionalProperties": False,
-        "required": ["path", "content"],
-        "properties": {
-            "path": {
-                "type": "string",
-                "enum": allowed,
+    if allowed:
+        files_schema: dict[str, Any] = {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["path", "content"],
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "enum": allowed,
+                    },
+                    "content": {
+                        "type": "string",
+                        "minLength": 1,
+                    },
+                },
             },
-            "content": {
-                "type": "string",
-                "minLength": 1,
-            },
-        },
-    }
-
-    files_schema: dict[str, Any] = {
-        "type": "array",
-        "items": file_item,
-        "minItems": len(allowed),
-        "maxItems": len(allowed),
-    }
+            "minItems": len(allowed),
+            "maxItems": len(allowed),
+        }
+    else:
+        files_schema = {
+            "type": "array",
+            "minItems": 0,
+            "maxItems": 0,
+        }
 
     return {
         "type": "object",

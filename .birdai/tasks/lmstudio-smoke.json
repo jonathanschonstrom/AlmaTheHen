@@ -1,0 +1,44 @@
+{
+  "goal": {
+    "slice_id": "infra-lmstudio-smoke",
+    "issue": "#26",
+    "objective": "Read-only BirdAI direct LM Studio smoke test. Use only the supplied bounded repository context. Return a schema-valid diagnosis, strategy, an empty files array, and summary. Do not propose, create, or modify repository files.",
+    "pass_definition": "The direct LM Studio backend returns a valid strict-schema response with files=[]; BirdAI reports no changed files; clean-worktree validation exits 0."
+  },
+  "allowed_files": [],
+  "authority": {
+    "human_approval_required": false,
+    "human_approval_granted": false,
+    "approval_reference": ""
+  },
+  "validation": {
+    "shell": "Python",
+    "command": "import subprocess; r=subprocess.run(['git','status','--porcelain'], text=True, capture_output=True, check=True); assert not r.stdout.strip(), r.stdout; print('CLEAN_WORKTREE: PASS')",
+    "timeout_seconds": 20,
+    "timeout_reason": ""
+  },
+  "max_attempts": {
+    "diagnostic_runs": 1,
+    "validation_runs": 1,
+    "same_strategy_uses": 1
+  },
+  "stop_conditions": [
+    "pass_definition_proven",
+    "second_run_failed_timed_out_or_inconclusive",
+    "strategy_budget_exhausted",
+    "authority_or_scope_conflict",
+    "unrelated_baseline_failure",
+    "deadline_enforcement_unavailable",
+    "cleanup_or_process_termination_unconfirmed"
+  ],
+  "result_schema": ".birdai/execution-result.schema.json",
+  "context_files": [],
+  "context_ranges": [
+    {
+      "path": ".birdai/execution-result.schema.json",
+      "start_line": 1,
+      "end_line": 18
+    }
+  ],
+  "execution_backend": "lmstudio"
+}
