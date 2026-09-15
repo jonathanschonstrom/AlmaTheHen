@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import stat
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -16,11 +17,7 @@ BIRDAI = ROOT / ".birdai"
 RUNNER = BIRDAI / "execution_runner.py"
 
 
-RESULT_SCHEMA = {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "type": "object",
-    "additionalProperties": True,
-}
+RESULT_SCHEMA_PATH = BIRDAI / "execution-result.schema.json"
 
 
 def run(cmd: list[str], cwd: Path, check: bool = True) -> subprocess.CompletedProcess[str]:
@@ -50,9 +47,9 @@ class RunnerTests(unittest.TestCase):
         run(["git", "config", "user.email", "test@example.invalid"], repo)
 
         (repo / ".birdai").mkdir()
-        (repo / ".birdai" / "execution-result.schema.json").write_text(
-            json.dumps(RESULT_SCHEMA),
-            encoding="utf-8",
+        shutil.copy2(
+            RESULT_SCHEMA_PATH,
+            repo / ".birdai" / "execution-result.schema.json",
         )
         (repo / "allowed.txt").write_text("before\n", encoding="utf-8")
         (repo / "forbidden.txt").write_text("untouched\n", encoding="utf-8")
@@ -217,6 +214,84 @@ print(json.dumps([
             sys.modules.pop("qwen_adapter", None)
             if sys.path and sys.path[0] == str(BIRDAI):
                 sys.path.pop(0)
+
+    def test_qwen_environment_scrubs_github_and_runner_credentials(self) -> None:
+        sys.path.insert(0, str(BIRDAI))
+        try:
+            import qwen_adapter
+
+            with mock.patch.dict(
+                os.environ,
+                {
+                    "GITHUB_TOKEN": "write-token",
+                    "GH_TOKEN": "gh-token",
+                    "GITHUB_WORKSPACE": r"C:\real\repo",
+                    "ACTIONS_RUNTIME_TOKEN": "runtime-token",
+                    "RUNNER_TEMP": r"C:\runner\temp",
+                    "BIRDAI_INTERNAL": "internal",
+                    "DASHSCOPE_API_KEY": "provider-key",
+                },
+                clear=False,
+            ):
+                env = qwen_adapter._sanitized_qwen_env()
+
+            self.assertNotIn("GITHUB_TOKEN", env)
+            self.assertNotIn("GH_TOKEN", env)
+            self.assertNotIn("GITHUB_WORKSPACE", env)
+            self.assertNotIn("ACTIONS_RUNTIME_TOKEN", env)
+            self.assertNotIn("RUNNER_TEMP", env)
+            self.assertNotIn("BIRDAI_INTERNAL", env)
+            self.assertEqual(env["DASHSCOPE_API_KEY"], "provider-key")
+            self.assertEqual(env["QWEN_CODE_SAFE_MODE"], "true")
+        finally:
+            sys.modules.pop("qwen_adapter", None)
+            if sys.path and sys.path[0] == str(BIRDAI):
+                sys.path.pop(0)
+
+    def test_block_when_qwen_tampers_with_real_repo(self) -> None:
+        temp, repo = self.make_repo()
+        task = self.make_task(repo, ["allowed.txt"])
+        fake = self.fake_qwen(temp, str(repo / "allowed.txt"))
+        output = temp / "out"
+
+        result = run(
+            [
+                sys.executable,
+                str(RUNNER),
+                "--task",
+                str(task),
+                "--repo",
+                str(repo),
+                "--output-dir",
+                str(output),
+                "--qwen-command",
+                str(fake),
+                "--agent-wall-time",
+                "10",
+                "--max-session-turns",
+                "5",
+                "--max-tool-calls",
+                "5",
+            ],
+            repo,
+            check=False,
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        payload = json.loads(
+            (output / "AI_RESULT.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(payload["status"], "BLOCKED")
+        self.assertEqual(payload["attempts"]["validation_runs"], 0)
+        self.assertIn("authority_or_scope_conflict", payload["stop_reason"])
+        self.assertEqual(
+            (repo / "allowed.txt").read_text(encoding="utf-8"),
+            "before\n",
+        )
+        self.assertEqual(
+            run(["git", "status", "--short"], repo).stdout.strip(),
+            "",
+        )
 
     def test_block_before_qwen_when_human_approval_is_required(self) -> None:
         temp, repo = self.make_repo()

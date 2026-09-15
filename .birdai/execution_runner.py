@@ -688,7 +688,7 @@ def materialize_qwen_workspace(
                 f"Tracked directory/submodule is not supported by isolated executor v1: {relative}"
             )
 
-        if source.is_symlink():
+        if is_unsafe_link(source):
             raise ExecutionError(
                 f"Tracked symlink is not supported by isolated executor v1: {relative}"
             )
@@ -701,6 +701,20 @@ def materialize_qwen_workspace(
 
 def digest_file(path: Path) -> str:
     return sha256(path)
+
+
+def is_unsafe_link(path: Path) -> bool:
+    if path.is_symlink():
+        return True
+
+    is_junction = getattr(path, "is_junction", None)
+    if callable(is_junction):
+        try:
+            return bool(is_junction())
+        except OSError:
+            return True
+
+    return False
 
 
 def workspace_change_set(
@@ -721,7 +735,7 @@ def workspace_change_set(
             changed.add(relative)
             continue
 
-        if candidate.is_symlink():
+        if is_unsafe_link(candidate):
             changed.add(relative)
             unsafe_symlinks.add(relative)
             continue
@@ -734,7 +748,7 @@ def workspace_change_set(
             changed.add(relative)
 
     for candidate in workspace.rglob("*"):
-        if candidate.is_dir() and not candidate.is_symlink():
+        if candidate.is_dir() and not is_unsafe_link(candidate):
             continue
 
         relative = candidate.relative_to(workspace).as_posix()
@@ -742,7 +756,7 @@ def workspace_change_set(
             continue
 
         changed.add(relative)
-        if candidate.is_symlink():
+        if is_unsafe_link(candidate):
             unsafe_symlinks.add(relative)
 
     return sorted(changed), sorted(unsafe_symlinks)
@@ -759,7 +773,7 @@ def apply_workspace_changes(
         source = workspace / normalized
         destination = repo / normalized
 
-        if source.is_symlink():
+        if is_unsafe_link(source):
             raise ExecutionError(f"Qwen created a symlink, which is not allowed: {normalized}")
 
         if source.exists():
@@ -770,7 +784,7 @@ def apply_workspace_changes(
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, destination)
         else:
-            if destination.exists() or destination.is_symlink():
+            if destination.exists() or is_unsafe_link(destination):
                 if destination.is_dir():
                     raise ExecutionError(
                         f"Qwen requested directory deletion, unsupported in executor v1: {normalized}"
@@ -938,6 +952,8 @@ def main() -> int:
                 output_dir=output_dir,
             )
 
+            real_repo_intrusions = changed_files(repo)
+
             candidate_changes, unsafe_symlinks = workspace_change_set(
                 repo=repo,
                 workspace=qwen_workspace,
@@ -954,9 +970,29 @@ def main() -> int:
                 task["allowed_files"],
             )
 
-            if unsafe_symlinks:
+            if real_repo_intrusions:
+                candidate_changes = sorted(
+                    set(candidate_changes + real_repo_intrusions)
+                )
+                scope_outside = sorted(
+                    set(
+                        scope_outside
+                        + [
+                            path
+                            for path in real_repo_intrusions
+                            if path not in set(task["allowed_files"])
+                        ]
+                    )
+                )
                 block_reason = (
-                    "Qwen created or replaced paths with symlinks: "
+                    "Qwen modified the real repository while assigned to the "
+                    "isolated workspace: "
+                    f"{real_repo_intrusions}"
+                )
+                stop_reason = "authority_or_scope_conflict"
+            elif unsafe_symlinks:
+                block_reason = (
+                    "Qwen created or replaced paths with links/junctions: "
                     f"{unsafe_symlinks}"
                 )
                 stop_reason = "authority_or_scope_conflict"

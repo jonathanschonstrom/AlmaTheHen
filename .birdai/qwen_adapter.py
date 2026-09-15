@@ -17,6 +17,71 @@ class QwenAdapterError(RuntimeError):
     pass
 
 
+QWEN_RESULT_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["diagnosis", "strategy", "summary"],
+    "properties": {
+        "diagnosis": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": [
+                "observed_failure",
+                "likely_location",
+                "hypothesis",
+                "minimal_test",
+            ],
+            "properties": {
+                "observed_failure": {"type": "string"},
+                "likely_location": {"type": "string"},
+                "hypothesis": {"type": "string"},
+                "minimal_test": {"type": "string"},
+            },
+        },
+        "strategy": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["id", "operation", "outcomes"],
+            "properties": {
+                "id": {"type": "string"},
+                "operation": {"type": "string"},
+                "outcomes": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                },
+            },
+        },
+        "summary": {"type": "string"},
+    },
+}
+
+
+def _sanitized_qwen_env() -> dict[str, str]:
+    """
+    Remove GitHub Actions transport credentials and runner-control metadata
+    before starting Qwen.
+
+    Provider/model credentials are intentionally preserved because Qwen Code
+    may require them for inference.
+    """
+    blocked_prefixes = (
+        "GITHUB_",
+        "GH_",
+        "ACTIONS_",
+        "RUNNER_",
+        "BIRDAI_",
+    )
+
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if not key.upper().startswith(blocked_prefixes)
+    }
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
+    env["QWEN_CODE_SAFE_MODE"] = "true"
+    return env
+
+
 @dataclass(frozen=True)
 class ProcessRecord:
     command: str
@@ -95,6 +160,10 @@ def _extract_qwen_result(
 
         for item in reversed(payload):
             if isinstance(item, dict) and item.get("type") == "result":
+                structured = item.get("structured_result")
+                if isinstance(structured, dict):
+                    return json.dumps(structured), structured, model
+
                 candidate = item.get("result")
                 if isinstance(candidate, str):
                     result_text = candidate
@@ -103,6 +172,10 @@ def _extract_qwen_result(
                     return json.dumps(candidate), candidate, model
 
     if result_text is None and isinstance(payload, dict):
+        structured = payload.get("structured_result")
+        if isinstance(structured, dict):
+            return json.dumps(structured), structured, model
+
         candidate = payload.get("result")
         if isinstance(candidate, str):
             result_text = candidate
@@ -287,6 +360,9 @@ class QwenAdapter:
         qwen_args = [
             "--prompt",
             prompt,
+            "--safe-mode",
+            "--json-schema",
+            json.dumps(QWEN_RESULT_SCHEMA, separators=(",", ":")),
             "--output-format",
             "json",
             "--approval-mode",
@@ -304,8 +380,7 @@ class QwenAdapter:
 
         command = _build_command(self.command, qwen_args)
 
-        env = os.environ.copy()
-        env.setdefault("PYTHONDONTWRITEBYTECODE", "1")
+        env = _sanitized_qwen_env()
 
         creationflags = 0
         popen_kwargs: dict[str, Any] = {}
