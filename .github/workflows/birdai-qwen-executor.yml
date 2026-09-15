@@ -1,0 +1,103 @@
+name: BirdAI Qwen Executor
+
+on:
+  workflow_dispatch:
+    inputs:
+      task_path:
+        description: Repository-relative path to AI_TASK.json
+        required: true
+        type: string
+      python_exe:
+        description: Python executable on the self-hosted Windows runner
+        required: true
+        default: C:\BirdAI_P1_env\Scripts\python.exe
+        type: string
+      qwen_command:
+        description: Qwen Code executable
+        required: true
+        default: qwen
+        type: string
+      qwen_model:
+        description: Optional Qwen model override; empty uses runner configuration
+        required: false
+        default: ""
+        type: string
+      agent_wall_time:
+        description: Agent wall-time budget in seconds
+        required: true
+        default: "900"
+        type: string
+      max_session_turns:
+        description: Qwen session-turn budget
+        required: true
+        default: "30"
+        type: string
+      max_tool_calls:
+        description: Qwen tool-call budget
+        required: true
+        default: "50"
+        type: string
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: birdai-qwen-executor
+  cancel-in-progress: false
+
+jobs:
+  execute:
+    runs-on: [self-hosted, Windows]
+    timeout-minutes: 30
+
+    env:
+      BIRDAI_PYTHON: ${{ inputs.python_exe }}
+      BIRDAI_QWEN_COMMAND: ${{ inputs.qwen_command }}
+      BIRDAI_QWEN_MODEL: ${{ inputs.qwen_model }}
+      BIRDAI_OUTPUT_DIR: ${{ runner.temp }}\birdai-execution-${{ github.run_id }}
+      AI_RESULT_PATH: ${{ runner.temp }}\birdai-execution-${{ github.run_id }}\AI_RESULT.json
+      GITHUB_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Checkout trusted default branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          clean: true
+          persist-credentials: true
+
+      - name: Preflight local BirdAI and Qwen environment
+        shell: cmd
+        run: |
+          "%BIRDAI_PYTHON%" --version
+          "%BIRDAI_QWEN_COMMAND%" --version
+          git status --short
+          git rev-parse HEAD
+
+      - name: Execute bounded Qwen slice
+        id: executor
+        continue-on-error: true
+        shell: cmd
+        run: |
+          "%BIRDAI_PYTHON%" ".birdai\execution_runner.py" --task "${{ inputs.task_path }}" --repo "." --output-dir "%BIRDAI_OUTPUT_DIR%" --result "%AI_RESULT_PATH%" --qwen-command "%BIRDAI_QWEN_COMMAND%" --qwen-model "%BIRDAI_QWEN_MODEL%" --agent-wall-time "${{ inputs.agent_wall_time }}" --max-session-turns "${{ inputs.max_session_turns }}" --max-tool-calls "${{ inputs.max_tool_calls }}"
+
+      - name: Upload execution evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: birdai-${{ github.run_id }}
+          path: ${{ env.BIRDAI_OUTPUT_DIR }}
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Publish result, branch, and PR when eligible
+        if: always()
+        shell: cmd
+        run: |
+          if not exist "%AI_RESULT_PATH%" (
+            echo AI_RESULT.json was not produced.
+            exit /b 1
+          )
+          "%BIRDAI_PYTHON%" ".birdai\github_publish.py" --task "${{ inputs.task_path }}" --result "%AI_RESULT_PATH%" --repo-path "." --repo-slug "${{ github.repository }}" --run-id "${{ github.run_id }}" --base "main"
