@@ -2,8 +2,8 @@
   "goal": {
     "slice_id": "infra-qwen-smoke",
     "issue": "#26",
-    "objective": "Prove the BirdAI Qwen executor can complete a read-only bounded slice without modifying the repository.",
-    "pass_definition": "Qwen returns the required terminal contract, repository scope remains unchanged, and clean-worktree validation exits 0."
+    "objective": "Transport-only BirdAI Qwen smoke test. Do not inspect, search, read, or modify repository files. Do not call repository tools. Immediately call structured_output exactly once with a schema-valid diagnosis, strategy, and summary confirming that this is a read-only smoke execution and that no repository change was attempted.",
+    "pass_definition": "Qwen immediately returns the required structured_output contract, makes no repository changes, and clean-worktree validation exits 0."
   },
   "allowed_files": [],
   "authority": {
