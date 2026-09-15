@@ -152,7 +152,7 @@ def _extract_qwen_result(
             if (
                 isinstance(item, dict)
                 and item.get("type") == "system"
-                and item.get("subtype") == "session_start"
+                and item.get("subtype") in {"session_start", "init"}
                 and isinstance(item.get("model"), str)
             ):
                 model = item["model"]
@@ -222,30 +222,121 @@ def _terminate_tree(process: subprocess.Popen[str]) -> bool:
 
 
 
+def _windows_qwen_standalone_command(
+    executable: str,
+    args: list[str],
+) -> list[str] | None:
+    """
+    Resolve Qwen Code's Windows standalone launcher directly to Node.
+
+    Qwen's standalone installer uses nested .cmd launchers whose `%*`
+    forwarding can strip quotes from JSON-valued arguments such as
+    `--json-schema`.  Launching node.exe + lib/cli-entry.js directly preserves
+    argv boundaries and avoids cmd.exe quoting entirely.
+
+    Supported observed layouts include:
+
+      <root>\\bin\\qwen.cmd
+        -> <root>\\qwen-code\\bin\\qwen.cmd
+        -> <root>\\qwen-code\\node\\node.exe
+           <root>\\qwen-code\\lib\\cli-entry.js
+
+    and direct use of the inner qwen.cmd.
+    """
+    if os.name != "nt":
+        return None
+
+    path = Path(executable)
+
+    if path.suffix.lower() not in {".cmd", ".bat"}:
+        return None
+
+    roots: list[Path] = [
+        path.parent.parent,
+        path.parent.parent / "qwen-code",
+    ]
+
+    local_app_data = os.environ.get("LOCALAPPDATA")
+    if local_app_data:
+        roots.append(
+            Path(local_app_data)
+            / "qwen-code"
+            / "qwen-code"
+        )
+
+    seen: set[str] = set()
+
+    for root in roots:
+        key = os.path.normcase(os.path.abspath(str(root)))
+        if key in seen:
+            continue
+        seen.add(key)
+
+        node = root / "node" / "node.exe"
+        cli = root / "lib" / "cli-entry.js"
+
+        if node.is_file() and cli.is_file():
+            return [
+                str(node),
+                str(cli),
+                *args,
+            ]
+
+    return None
+
+
 def _build_command(executable: str, args: list[str]) -> list[str]:
     """
-    Build a launchable argv for native executables and Windows script shims.
+    Build argv without losing structured JSON arguments.
 
-    npm global packages on Windows are normally exposed through .cmd files.
-    cmd.exe requires the wrapped command line after /c to be treated as one
-    command string, so subprocess.list2cmdline is used for correct quoting.
+    On Windows, Qwen Code's standalone .cmd wrappers forward `%*` through
+    multiple batch layers.  That corrupts JSON quoting for `--json-schema`.
+    When the standalone runtime can be identified, bypass all batch launchers
+    and execute node.exe + lib/cli-entry.js directly.
+
+    Generic .cmd/.bat commands still fall back to cmd.exe.
+    Python entrypoints are launched with the current interpreter.
     """
     suffix = os.path.splitext(executable)[1].lower()
 
     if os.name == "nt":
         if suffix in {".cmd", ".bat"}:
+            standalone = _windows_qwen_standalone_command(
+                executable,
+                args,
+            )
+            if standalone is not None:
+                return standalone
+
             cmd = shutil.which("cmd.exe") or os.environ.get("COMSPEC")
             if not cmd:
                 raise QwenAdapterError(
-                    f"Cannot launch Windows command script without cmd.exe: {executable}"
+                    "Cannot launch Windows command script without "
+                    f"cmd.exe: {executable}"
                 )
-            inner = subprocess.list2cmdline([executable, *args])
-            return [cmd, "/d", "/s", "/c", inner]
+
+            inner = subprocess.list2cmdline(
+                [executable, *args]
+            )
+            return [
+                cmd,
+                "/d",
+                "/s",
+                "/c",
+                inner,
+            ]
 
         if suffix in {".py", ".pyw"}:
-            return [sys.executable, executable, *args]
+            return [
+                sys.executable,
+                executable,
+                *args,
+            ]
 
-    return [executable, *args]
+    return [
+        executable,
+        *args,
+    ]
 
 def _version(executable: str) -> str:
     command = _build_command(executable, ["--version"])
@@ -305,7 +396,8 @@ Hard execution rules:
 6. Do not use the shell to run validation. The coordinator runs the authoritative validation after you finish.
 7. Prefer the smallest change that can satisfy the stated pass definition.
 8. If authority, scope, or evidence is insufficient, stop without expanding scope.
-9. Finish with exactly one JSON object and no markdown fences.
+9. The coordinator supplied --json-schema. You MUST finish by calling the structured_output tool exactly once with an object that matches the required schema.
+10. Do not merely print the terminal object as prose or markdown, and do not continue working after structured_output is accepted.
 
 Required terminal JSON object shape:
 {json.dumps(contract, indent=2)}
