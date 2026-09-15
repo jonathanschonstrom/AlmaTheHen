@@ -79,7 +79,7 @@ jobs:
         continue-on-error: true
         shell: cmd
         run: |
-          "%BIRDAI_PYTHON%" ".birdai\execution_runner.py" --task "${{ inputs.task_path }}" --repo "." --output-dir "%RUNNER_TEMP%\birdai-execution-%GITHUB_RUN_ID%" --result "%RUNNER_TEMP%\birdai-execution-%GITHUB_RUN_ID%\AI_RESULT.json" --qwen-command "%BIRDAI_QWEN_COMMAND%" --qwen-model "%BIRDAI_QWEN_MODEL%" --agent-wall-time "${{ inputs.agent_wall_time }}" --max-session-turns "${{ inputs.max_session_turns }}" --max-tool-calls "${{ inputs.max_tool_calls }}"
+          "%BIRDAI_PYTHON%" -B ".birdai\execution_runner.py" --task "${{ inputs.task_path }}" --repo "." --output-dir "%RUNNER_TEMP%\birdai-execution-%GITHUB_RUN_ID%" --result "%RUNNER_TEMP%\birdai-execution-%GITHUB_RUN_ID%\AI_RESULT.json" --qwen-command "%BIRDAI_QWEN_COMMAND%" --qwen-model "%BIRDAI_QWEN_MODEL%" --agent-wall-time "${{ inputs.agent_wall_time }}" --max-session-turns "${{ inputs.max_session_turns }}" --max-tool-calls "${{ inputs.max_tool_calls }}"
 
       - name: Upload execution evidence
         if: always()
@@ -103,4 +103,5 @@ jobs:
             exit /b 1
           )
           gh auth setup-git
-          "%BIRDAI_PYTHON%" ".birdai\github_publish.py" --task "${{ inputs.task_path }}" --result "%AI_RESULT_PATH%" --repo-path "." --repo-slug "${{ github.repository }}" --run-id "${{ github.run_id }}" --base "main"
+          "%BIRDAI_PYTHON%" -B ".birdai\github_publish.py" --task "${{ inputs.task_path }}" --result "%AI_RESULT_PATH%" --repo-path "." --repo-slug "${{ github.repository }}" --run-id "${{ github.run_id }}" --base "main"
+
