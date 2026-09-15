@@ -576,8 +576,6 @@ class QwenAdapter:
         prompt = _build_prompt(task, cwd)
 
         qwen_args = [
-            "--prompt",
-            prompt,
             "--safe-mode",
             "--json-schema",
             json.dumps(QWEN_RESULT_SCHEMA, separators=(",", ":")),
@@ -616,6 +614,7 @@ class QwenAdapter:
             cwd=str(cwd),
             env=env,
             text=True,
+            stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             encoding="utf-8",
@@ -628,7 +627,10 @@ class QwenAdapter:
         forced_termination = False
 
         try:
-            stdout, stderr = process.communicate(timeout=self.wall_time_seconds + 15)
+            stdout, stderr = process.communicate(
+                input=prompt,
+                timeout=self.wall_time_seconds + 15,
+            )
         except subprocess.TimeoutExpired:
             timed_out = True
             forced_termination = _terminate_tree(process)
@@ -643,7 +645,10 @@ class QwenAdapter:
         provenance = reported_model or self.model or "configured-default"
 
         record = ProcessRecord(
-            command=" ".join(_build_command(self.command, ["--prompt", "<bounded-task>", *qwen_args[2:]])),
+            command=(
+                " ".join(_build_command(self.command, qwen_args))
+                + " < <bounded-task-stdin>"
+            ),
             version=f"{_version(self.command)}; model={provenance}",
             pid=process.pid,
             start_utc=start_utc,
