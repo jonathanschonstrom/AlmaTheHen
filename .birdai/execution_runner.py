@@ -88,6 +88,12 @@ def validate_task(task: dict[str, Any]) -> None:
         if key not in task:
             raise ExecutionError(f"AI_TASK missing field: {key}")
 
+    backend = task.get("execution_backend", "qwen")
+    if backend not in {"qwen", "lmstudio"}:
+        raise ExecutionError(
+            "AI_TASK execution_backend must be qwen or lmstudio"
+        )
+
     goal = task["goal"]
     for key in ("slice_id", "issue", "objective", "pass_definition"):
         if not isinstance(goal.get(key), str) or not goal[key].strip():
@@ -379,7 +385,7 @@ def run_record(
         "cwd": str(cwd),
         "version": record.version,
         "seed": None,
-        "timeout_seconds": max(record.elapsed_seconds, 0.001) if scenario_id == "qwen-agent" else 1,
+        "timeout_seconds": max(record.elapsed_seconds, 0.001) if scenario_id in {"qwen-agent", "lmstudio-bounded"} else 1,
         "elapsed_seconds": record.elapsed_seconds,
         "parent": {
             "pid": record.pid,
@@ -1028,13 +1034,22 @@ def main() -> int:
                 output_dir=output_dir,
             )
 
-            adapter = QwenAdapter(
-                command=args.qwen_command,
-                model=args.qwen_model or None,
-                wall_time_seconds=args.agent_wall_time,
-                max_session_turns=args.max_session_turns,
-                max_tool_calls=args.max_tool_calls,
-            )
+            backend = task.get("execution_backend", "qwen")
+            if backend == "lmstudio":
+                from lmstudio_adapter import LMStudioAdapter
+
+                adapter = LMStudioAdapter(
+                    model=args.qwen_model or None,
+                    timeout_seconds=args.agent_wall_time,
+                )
+            else:
+                adapter = QwenAdapter(
+                    command=args.qwen_command,
+                    model=args.qwen_model or None,
+                    wall_time_seconds=args.agent_wall_time,
+                    max_session_turns=args.max_session_turns,
+                    max_tool_calls=args.max_tool_calls,
+                )
             qwen_run = adapter.execute(
                 task=task,
                 cwd=qwen_workspace,
@@ -1144,7 +1159,7 @@ def main() -> int:
                     stop_reason = "pass_definition_proven"
                     pass_evidence = [
                         (
-                            "Qwen ran in an isolated tracked-file workspace "
+                            "Generator ran in an isolated tracked-file workspace "
                             "without repository metadata"
                         ),
                         (
@@ -1198,7 +1213,11 @@ def main() -> int:
         )
         runs.append(
             run_record(
-                scenario_id="qwen-agent",
+                scenario_id=(
+                    "lmstudio-bounded"
+                    if task.get("execution_backend") == "lmstudio"
+                    else "qwen-agent"
+                ),
                 record=qwen_run.process,
                 cwd=output_dir / "qwen-workspace",
                 failed_step="bounded_qwen_execution" if qwen_failed else None,
