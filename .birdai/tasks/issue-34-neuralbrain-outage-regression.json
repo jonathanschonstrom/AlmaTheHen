@@ -33,5 +33,9 @@
     "deadline_enforcement_unavailable",
     "cleanup_or_process_termination_unconfirmed"
   ],
-  "result_schema": ".birdai/execution-result.schema.json"
+  "result_schema": ".birdai/execution-result.schema.json",
+  "context_files": [
+    "tests/run_tests.gd",
+    "scripts/cognition/agent.gd"
+  ]
 }

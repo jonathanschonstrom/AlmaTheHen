@@ -104,6 +104,27 @@ def validate_task(task: dict[str, Any]) -> None:
     if len(normalized) != len(set(normalized)):
         raise ExecutionError("AI_TASK allowed_files contains duplicates")
 
+    context = task.get("context_files", [])
+    if context is None:
+        context = []
+    if not isinstance(context, list):
+        raise ExecutionError("AI_TASK context_files must be an array")
+
+    normalized_context = [
+        normalize_repo_path(str(path))
+        for path in context
+    ]
+    if len(normalized_context) != len(set(normalized_context)):
+        raise ExecutionError("AI_TASK context_files contains duplicates")
+
+    overlap = sorted(set(normalized).intersection(normalized_context))
+    if overlap:
+        raise ExecutionError(
+            "AI_TASK context_files are read-only and cannot overlap allowed_files: "
+            + ", ".join(overlap)
+        )
+
+
     authority = task.get("authority", {})
     if authority:
         if not isinstance(authority, dict):
