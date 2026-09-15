@@ -1,7 +1,7 @@
 version: 1
 current:
-  milestone: P1
-  objective: verified_neural_baseline
+  milestone: E1
+  objective: experiment_environment
 
 milestones:
   E0:
@@ -21,11 +21,11 @@ milestones:
       - no_silent_data_loss
   P1:
     title: Verified neural baseline
-    status: active
+    status: complete
     depends_on: [E0]
   E1:
     title: Experiment environment
-    status: locked
+    status: active
     depends_on: [P1]
   P1_5:
     title: Object and Primitive Selection
