@@ -16,16 +16,50 @@ def test_required_governance_files_exist():
     require("BIRDAI-NEUROSCIENCE-REFERENCE.md")
 
 
-def test_current_phase_is_p1():
+def test_current_phase_is_e1():
     governance = require(".birdai/governance.yaml")
     roadmap = require(".birdai/roadmap.yaml")
-    assert "current_phase: P1" in governance
-    assert "milestone: P1" in roadmap
-    assert "objective: verified_neural_baseline" in roadmap
-    assert "title: Persistent individual" in roadmap
-    assert "status: complete" in roadmap
-    assert "title: Verified neural baseline" in roadmap
-    assert "status: active" in roadmap
+
+    assert "current_phase: E1" in governance
+    assert (
+        "current:\n"
+        "  milestone: E1\n"
+        "  objective: experiment_environment"
+    ) in roadmap
+    assert (
+        "  P1:\n"
+        "    title: Verified neural baseline\n"
+        "    status: complete\n"
+        "    depends_on: [E0]"
+    ) in roadmap
+    assert (
+        "  E1:\n"
+        "    title: Experiment environment\n"
+        "    status: active\n"
+        "    depends_on: [P1]"
+    ) in roadmap
+
+    roadmap_lines = roadmap.splitlines()
+    for milestone in ("P1_5", "P2", "P3", "P3_5", "P4", "P5", "P6", "P7"):
+        marker = f"  {milestone}:"
+        assert marker in roadmap_lines, f"Missing downstream milestone {milestone}"
+
+        start = roadmap_lines.index(marker)
+        end = len(roadmap_lines)
+        for index in range(start + 1, len(roadmap_lines)):
+            line = roadmap_lines[index]
+            if (
+                line.startswith("  ")
+                and not line.startswith("    ")
+                and line.endswith(":")
+            ):
+                end = index
+                break
+
+        section = "\n".join(roadmap_lines[start:end])
+        assert "    status: locked" in section, (
+            f"Downstream milestone {milestone} must remain locked while E1 is active"
+        )
 
 
 def test_core_safety_rules_are_declared():
