@@ -408,22 +408,22 @@ def run_record(
     }
 
 
-def qwen_diagnosis(contract: dict[str, Any] | None, fallback: str) -> dict[str, str]:
+def execution_diagnosis(contract: dict[str, Any] | None, fallback: str) -> dict[str, str]:
     if not isinstance(contract, dict):
         return {
             "observed_failure": fallback,
-            "likely_location": "qwen execution contract",
-            "hypothesis": "Qwen did not return the required terminal JSON object",
-            "minimal_test": "inspect qwen stdout/stderr evidence",
+            "likely_location": "execution backend contract",
+            "hypothesis": "Execution backend did not return the required structured object",
+            "minimal_test": "inspect execution backend stdout/stderr evidence",
         }
 
     diagnosis = contract.get("diagnosis")
     if not isinstance(diagnosis, dict):
         return {
             "observed_failure": fallback,
-            "likely_location": "qwen execution contract",
-            "hypothesis": "terminal JSON omitted diagnosis",
-            "minimal_test": "inspect qwen stdout/stderr evidence",
+            "likely_location": "execution backend contract",
+            "hypothesis": "structured execution result omitted diagnosis",
+            "minimal_test": "inspect execution backend stdout/stderr evidence",
         }
 
     result: dict[str, str] = {}
@@ -434,20 +434,20 @@ def qwen_diagnosis(contract: dict[str, Any] | None, fallback: str) -> dict[str, 
     if any(not value for value in result.values()):
         return {
             "observed_failure": fallback,
-            "likely_location": "qwen execution contract",
-            "hypothesis": "terminal diagnosis was incomplete",
-            "minimal_test": "inspect qwen stdout/stderr evidence",
+            "likely_location": "execution backend contract",
+            "hypothesis": "structured execution diagnosis was incomplete",
+            "minimal_test": "inspect execution backend stdout/stderr evidence",
         }
 
     return result
 
 
-def qwen_strategy(contract: dict[str, Any] | None, outcome: str) -> list[dict[str, Any]]:
+def execution_strategy(contract: dict[str, Any] | None, outcome: str) -> list[dict[str, Any]]:
     strategy = contract.get("strategy") if isinstance(contract, dict) else None
 
     if not isinstance(strategy, dict):
         return [{
-            "id": "qwen-bounded-execution",
+            "id": "bounded-execution",
             "operation": "bounded repository diagnosis/implementation",
             "uses": 1,
             "outcomes": [outcome],
@@ -458,7 +458,7 @@ def qwen_strategy(contract: dict[str, Any] | None, outcome: str) -> list[dict[st
         outcomes = [outcome]
 
     return [{
-        "id": str(strategy.get("id") or "qwen-bounded-execution"),
+        "id": str(strategy.get("id") or "bounded-execution"),
         "operation": str(strategy.get("operation") or "bounded repository diagnosis/implementation"),
         "uses": 1,
         "outcomes": [str(item) for item in outcomes],
@@ -762,12 +762,12 @@ def tracked_repo_files(repo: Path) -> list[str]:
     return sorted(path for path in raw.split("\0") if path)
 
 
-def materialize_qwen_workspace(
+def materialize_execution_workspace(
     *,
     repo: Path,
     output_dir: Path,
 ) -> tuple[Path, list[str]]:
-    workspace = output_dir / "qwen-workspace"
+    workspace = output_dir / "execution-workspace"
     if workspace.exists():
         shutil.rmtree(workspace)
     workspace.mkdir(parents=True)
@@ -869,12 +869,12 @@ def apply_workspace_changes(
         destination = repo / normalized
 
         if is_unsafe_link(source):
-            raise ExecutionError(f"Qwen created a symlink, which is not allowed: {normalized}")
+            raise ExecutionError(f"Execution backend created a symlink, which is not allowed: {normalized}")
 
         if source.exists():
             if not source.is_file():
                 raise ExecutionError(
-                    f"Qwen changed a non-file path, which executor v1 does not support: {normalized}"
+                    f"Execution backend changed a non-file path, which executor v1 does not support: {normalized}"
                 )
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, destination)
@@ -882,7 +882,7 @@ def apply_workspace_changes(
             if destination.exists() or is_unsafe_link(destination):
                 if destination.is_dir():
                     raise ExecutionError(
-                        f"Qwen requested directory deletion, unsupported in executor v1: {normalized}"
+                        f"Execution backend requested directory deletion, unsupported in executor v1: {normalized}"
                     )
                 destination.unlink()
 
@@ -893,7 +893,7 @@ def write_workspace_evidence(
     changes: list[str],
     unsafe_symlinks: list[str],
 ) -> Path:
-    path = output_dir / "qwen-workspace-changes.json"
+    path = output_dir / "execution-workspace-changes.json"
     payload = {
         "changed_files": changes,
         "unsafe_symlinks": unsafe_symlinks,
@@ -916,7 +916,7 @@ def rollback_repo(repo: Path) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="BirdAI bounded Qwen execution runner")
+    parser = argparse.ArgumentParser(description="BirdAI bounded execution runner")
     parser.add_argument("--task", required=True)
     parser.add_argument("--repo", default=".")
     parser.add_argument("--output-dir", required=True)
@@ -998,9 +998,9 @@ def main() -> int:
     if not schema_path.exists():
         raise ExecutionError(f"Execution result schema not found: {schema_path}")
 
-    qwen_run = None
+    execution_run = None
     validation_run = None
-    qwen_workspace: Path | None = None
+    execution_workspace: Path | None = None
     status = "BLOCKED"
     stop_reason = "second_run_failed_timed_out_or_inconclusive"
     pass_evidence: list[str] = []
@@ -1029,7 +1029,7 @@ def main() -> int:
             )
             stop_reason = "authority_or_scope_conflict"
         else:
-            qwen_workspace, tracked = materialize_qwen_workspace(
+            execution_workspace, tracked = materialize_execution_workspace(
                 repo=repo,
                 output_dir=output_dir,
             )
@@ -1050,9 +1050,9 @@ def main() -> int:
                     max_session_turns=args.max_session_turns,
                     max_tool_calls=args.max_tool_calls,
                 )
-            qwen_run = adapter.execute(
+            execution_run = adapter.execute(
                 task=task,
-                cwd=qwen_workspace,
+                cwd=execution_workspace,
                 output_dir=output_dir,
             )
 
@@ -1060,7 +1060,7 @@ def main() -> int:
 
             candidate_changes, unsafe_symlinks = workspace_change_set(
                 repo=repo,
-                workspace=qwen_workspace,
+                workspace=execution_workspace,
                 tracked=tracked,
             )
             write_workspace_evidence(
@@ -1089,37 +1089,37 @@ def main() -> int:
                     )
                 )
                 block_reason = (
-                    "Qwen modified the real repository while assigned to the "
+                    "Execution backend modified the real repository while assigned to the "
                     "isolated workspace: "
                     f"{real_repo_intrusions}"
                 )
                 stop_reason = "authority_or_scope_conflict"
             elif unsafe_symlinks:
                 block_reason = (
-                    "Qwen created or replaced paths with links/junctions: "
+                    "Execution backend created or replaced paths with links/junctions: "
                     f"{unsafe_symlinks}"
                 )
                 stop_reason = "authority_or_scope_conflict"
-            elif qwen_run.process.timed_out:
-                block_reason = "Qwen agent exceeded the execution wall-time budget"
-            elif qwen_run.process.exit_code != 0:
+            elif execution_run.process.timed_out:
+                block_reason = "Execution backend exceeded the execution wall-time budget"
+            elif execution_run.process.exit_code != 0:
                 block_reason = (
-                    f"Qwen agent exited with code {qwen_run.process.exit_code}"
+                    f"Execution backend exited with code {execution_run.process.exit_code}"
                 )
-            elif qwen_run.contract is None:
+            elif execution_run.contract is None:
                 block_reason = (
-                    "Qwen agent did not return the required terminal JSON contract"
+                    "Execution backend did not return the required structured contract"
                 )
             elif not scope_ok:
                 block_reason = (
-                    "Qwen attempted files outside allowed_files in isolated workspace: "
+                    "Execution backend attempted files outside allowed_files in isolated workspace: "
                     f"{scope_outside}"
                 )
                 stop_reason = "authority_or_scope_conflict"
             else:
                 apply_workspace_changes(
                     repo=repo,
-                    workspace=qwen_workspace,
+                    workspace=execution_workspace,
                     changes=candidate_changes,
                 )
 
@@ -1183,31 +1183,31 @@ def main() -> int:
                 "Coordinator failed to restore the repository after a blocked slice"
             )
 
-    if qwen_workspace is not None and qwen_workspace.exists():
-        shutil.rmtree(qwen_workspace)
+    if execution_workspace is not None and execution_workspace.exists():
+        shutil.rmtree(execution_workspace)
 
     elapsed = round(time.monotonic() - started, 6)
 
-    diagnosis = qwen_diagnosis(
-        qwen_run.contract if qwen_run else None,
+    diagnosis = execution_diagnosis(
+        execution_run.contract if execution_run else None,
         block_reason or "No execution failure reported",
     )
     strategies = (
-        qwen_strategy(
-            qwen_run.contract,
+        execution_strategy(
+            execution_run.contract,
             "PASS" if status == "PASS" else block_reason or "BLOCKED",
         )
-        if qwen_run is not None
+        if execution_run is not None
         else []
     )
 
     runs: list[dict[str, Any]] = []
 
-    if qwen_run is not None:
-        qwen_failed = (
-            qwen_run.process.exit_code != 0
-            or qwen_run.process.timed_out
-            or qwen_run.contract is None
+    if execution_run is not None:
+        execution_failed = (
+            execution_run.process.exit_code != 0
+            or execution_run.process.timed_out
+            or execution_run.contract is None
             or bool(scope_outside)
             or bool(unsafe_symlinks)
         )
@@ -1218,11 +1218,25 @@ def main() -> int:
                     if task.get("execution_backend") == "lmstudio"
                     else "qwen-agent"
                 ),
-                record=qwen_run.process,
-                cwd=output_dir / "qwen-workspace",
-                failed_step="bounded_qwen_execution" if qwen_failed else None,
+                record=execution_run.process,
+                cwd=output_dir / "execution-workspace",
+                failed_step=(
+                    (
+                        "bounded_lmstudio_generation"
+                        if task.get("execution_backend") == "lmstudio"
+                        else "bounded_qwen_execution"
+                    )
+                    if execution_failed
+                    else None
+                ),
                 last_passed_step=(
-                    None if qwen_failed else "bounded_qwen_execution"
+                    None
+                    if execution_failed
+                    else (
+                        "bounded_lmstudio_generation"
+                        if task.get("execution_backend") == "lmstudio"
+                        else "bounded_qwen_execution"
+                    )
                 ),
             )
         )
@@ -1258,10 +1272,10 @@ def main() -> int:
     )
 
     cleanup_details = (
-        "Isolated Qwen workspace removed; blocked repository changes rolled back; "
+        "Isolated execution workspace removed; blocked repository changes rolled back; "
         "no unconfirmed timed-out process remains."
         if status == "BLOCKED"
-        else "Isolated Qwen workspace removed; coordinator owns process lifetime."
+        else "Isolated execution workspace removed; coordinator owns process lifetime."
     )
     if rollback_performed:
         cleanup_details += " Candidate diff was saved before rollback."
@@ -1273,7 +1287,7 @@ def main() -> int:
         "elapsed_seconds": elapsed,
         "diagnosis": diagnosis,
         "attempts": {
-            "diagnostic_runs": 1 if qwen_run is not None else 0,
+            "diagnostic_runs": 1 if execution_run is not None else 0,
             "validation_runs": 1 if validation_run is not None else 0,
             "strategies": strategies,
         },
