@@ -1,0 +1,35 @@
+{
+  "goal": {
+    "slice_id": "infra-qwen-smoke",
+    "issue": "#26",
+    "objective": "Prove the BirdAI Qwen executor can complete a read-only bounded slice without modifying the repository.",
+    "pass_definition": "Qwen returns the required terminal contract, repository scope remains unchanged, and clean-worktree validation exits 0."
+  },
+  "allowed_files": [],
+  "authority": {
+    "human_approval_required": false,
+    "human_approval_granted": false,
+    "approval_reference": ""
+  },
+  "validation": {
+    "shell": "Python",
+    "command": "import subprocess; r=subprocess.run(['git','status','--porcelain'], text=True, capture_output=True, check=True); assert not r.stdout.strip(), r.stdout; print('CLEAN_WORKTREE: PASS')",
+    "timeout_seconds": 20,
+    "timeout_reason": ""
+  },
+  "max_attempts": {
+    "diagnostic_runs": 1,
+    "validation_runs": 1,
+    "same_strategy_uses": 2
+  },
+  "stop_conditions": [
+    "pass_definition_proven",
+    "second_run_failed_timed_out_or_inconclusive",
+    "strategy_budget_exhausted",
+    "authority_or_scope_conflict",
+    "unrelated_baseline_failure",
+    "deadline_enforcement_unavailable",
+    "cleanup_or_process_termination_unconfirmed"
+  ],
+  "result_schema": ".birdai/execution-result.schema.json"
+}
