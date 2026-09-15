@@ -1,0 +1,37 @@
+{
+  "goal": {
+    "slice_id": "infra-qwen-write-smoke",
+    "issue": "#26",
+    "objective": "Write-path canary for the bounded BirdAI Qwen executor. Create exactly .birdai/canary/qwen-write-smoke.txt with the single line BIRDAI_QWEN_WRITE_SMOKE_PASS followed by one newline. Do not inspect, read, search, or modify any other repository file. After writing the canary, immediately call structured_output exactly once with a schema-valid result.",
+    "pass_definition": "The canary file exists with exactly the required bytes, BirdAI reports it as the only changed file, authoritative validation exits 0, and the publisher opens a review PR."
+  },
+  "allowed_files": [
+    ".birdai/canary/qwen-write-smoke.txt"
+  ],
+  "authority": {
+    "human_approval_required": false,
+    "human_approval_granted": false,
+    "approval_reference": ""
+  },
+  "validation": {
+    "shell": "Python",
+    "command": "from pathlib import Path; p=Path('.birdai/canary/qwen-write-smoke.txt'); assert p.is_file(), 'canary missing'; assert p.read_bytes() == b'BIRDAI_QWEN_WRITE_SMOKE_PASS\\n', repr(p.read_bytes()); print('WRITE_SMOKE: PASS')",
+    "timeout_seconds": 20,
+    "timeout_reason": ""
+  },
+  "max_attempts": {
+    "diagnostic_runs": 1,
+    "validation_runs": 1,
+    "same_strategy_uses": 1
+  },
+  "stop_conditions": [
+    "pass_definition_proven",
+    "second_run_failed_timed_out_or_inconclusive",
+    "strategy_budget_exhausted",
+    "authority_or_scope_conflict",
+    "unrelated_baseline_failure",
+    "deadline_enforcement_unavailable",
+    "cleanup_or_process_termination_unconfirmed"
+  ],
+  "result_schema": ".birdai/execution-result.schema.json"
+}

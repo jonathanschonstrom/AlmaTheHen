@@ -59,7 +59,7 @@ jobs:
 
     steps:
       - name: Checkout trusted default branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           clean: true
@@ -83,7 +83,7 @@ jobs:
 
       - name: Upload execution evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: birdai-${{ github.run_id }}
           path: ${{ runner.temp }}\birdai-execution-${{ github.run_id }}
