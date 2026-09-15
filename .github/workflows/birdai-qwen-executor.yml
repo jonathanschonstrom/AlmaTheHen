@@ -22,6 +22,11 @@ on:
         required: false
         default: ""
         type: string
+      godot_exe:
+        description: Optional absolute Godot executable path on runner
+        required: false
+        default: ""
+        type: string
       agent_wall_time:
         description: Agent wall-time budget in seconds
         required: true
@@ -56,6 +61,9 @@ jobs:
       BIRDAI_PYTHON: ${{ inputs.python_exe }}
       BIRDAI_QWEN_COMMAND: ${{ inputs.qwen_command }}
       BIRDAI_QWEN_MODEL: ${{ inputs.qwen_model }}
+      BIRDAI_LMSTUDIO_BASE_URL: http://127.0.0.1:1234/v1
+      BIRDAI_LMSTUDIO_MODEL: ${{ inputs.qwen_model }}
+      BIRDAI_GODOT_EXE: ${{ inputs.godot_exe }}
 
     steps:
       - name: Checkout trusted default branch
@@ -65,16 +73,16 @@ jobs:
           clean: true
           persist-credentials: false
 
-      - name: Preflight local BirdAI and Qwen environment
+      - name: Preflight local BirdAI environment
         shell: cmd
         run: |
           "%BIRDAI_PYTHON%" --version
-          "%BIRDAI_QWEN_COMMAND%" --version
+          if not "%BIRDAI_GODOT_EXE%"=="" "%BIRDAI_GODOT_EXE%" --version
           gh --version
           git status --short
           git rev-parse HEAD
 
-      - name: Execute bounded Qwen slice
+      - name: Execute bounded BirdAI slice
         id: executor
         continue-on-error: true
         shell: cmd
