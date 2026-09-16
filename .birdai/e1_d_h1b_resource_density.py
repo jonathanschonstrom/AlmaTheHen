@@ -8,6 +8,7 @@ import json
 import math
 import os
 import statistics
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -34,6 +35,7 @@ EVIDENCE_ROOT = Path(
 )
 
 H1A_HELPER_REL = ".birdai/e1_b_h1a_resource_distance.py"
+WORLD_REL = "scripts/world/world_state.gd"
 TESTED_RESOURCE_ID = "o1"
 PEER_RESOURCE_ID = "e1d_food_peer"
 PRIMARY_POSITION = [-4.0, 0.0, 0.0]
@@ -245,6 +247,25 @@ def derive_arm_sources(helper, source: Path, root: Path) -> tuple[Path, Path]:
     return rich_path, sparse_path
 
 
+def inject_peer_world_runtime(source: str) -> str:
+    if PEER_RESOURCE_ID in source:
+        raise DensityError(
+            f"Throwaway world runtime unexpectedly already contains {PEER_RESOURCE_ID}."
+        )
+    anchor = "\tobjects.o1.stock = BOWL_CAPACITY\n"
+    if source.count(anchor) != 1:
+        raise DensityError(
+            "Could not locate the pinned o1 initialization anchor in world_state.gd."
+        )
+    addition = (
+        anchor
+        + '\tobjects["e1d_food_peer"] = objects.o1.duplicate(true)\n'
+        + '\tobjects["e1d_food_peer"]["id"] = "e1d_food_peer"\n'
+        + '\tobjects["e1d_food_peer"]["position"] = Vector3(4.0, 0.0, 0.0)\n'
+    )
+    return source.replace(anchor, addition, 1)
+
+
 def density_lightweight_bridge_state(instrumented: str) -> str:
     start_marker = "func e1_d3_state(agent) -> Dictionary:\n"
     end_marker = "func should_pause_simulation() -> bool:\n"
@@ -256,12 +277,12 @@ def density_lightweight_bridge_state(instrumented: str) -> str:
         )
 
     replacement = """func e1_d3_state(agent) -> Dictionary:
-\tvar peer_present := agent.world.objects.has("e1d_food_peer")
-\tvar peer_stock := -1.0
-\tvar peer_active := false
+\tvar peer_present: bool = bool(agent.world.objects.has("e1d_food_peer"))
+\tvar peer_stock: float = -1.0
+\tvar peer_active: bool = false
 \tif peer_present:
-\t\tpeer_stock = agent.world.objects.e1d_food_peer.stock
-\t\tpeer_active = agent.world.objects.e1d_food_peer.active
+\t\tpeer_stock = float(agent.world.objects["e1d_food_peer"]["stock"])
+\t\tpeer_active = bool(agent.world.objects["e1d_food_peer"]["active"])
 \treturn {
 \t\t"agent": {
 \t\t\t"age": agent.age,
@@ -303,6 +324,27 @@ def tested_stock(data: dict[str, Any]) -> tuple[float, dict[str, float]]:
 
 def install_density_metrics(helper) -> None:
     original = helper.metrics_for_run
+    original_write_instrumented_runtime = helper.write_instrumented_runtime
+
+    def write_instrumented_runtime(repo: Path, sandbox: Path, d3):
+        hashes = original_write_instrumented_runtime(repo, sandbox, d3)
+        arm_id = str(getattr(helper, "_e1d_current_arm", ""))
+        world_path = sandbox / WORLD_REL
+        if arm_id == "rich":
+            world_source = world_path.read_text(encoding="utf-8")
+            patched_world = inject_peer_world_runtime(world_source)
+            world_path.write_text(patched_world, encoding="utf-8", newline="\n")
+            hashes[WORLD_REL] = sha256_file(world_path)
+        elif arm_id == "sparse":
+            if PEER_RESOURCE_ID in world_path.read_text(encoding="utf-8"):
+                raise DensityError(
+                    "Sparse throwaway runtime unexpectedly contains the E1-D peer."
+                )
+        else:
+            raise DensityError(
+                f"E1-D apparatus arm context is missing or invalid: {arm_id!r}"
+            )
+        return hashes
 
     def metrics_for_run(*, events, initial, final):
         base = original(events=events, initial=initial, final=final)
@@ -343,6 +385,7 @@ def install_density_metrics(helper) -> None:
 
     helper.metrics_for_run = metrics_for_run
     helper.lightweight_bridge_state = density_lightweight_bridge_state
+    helper.write_instrumented_runtime = write_instrumented_runtime
 
 
 def mask_peer_presence(data: dict[str, Any]) -> dict[str, Any]:
@@ -363,16 +406,20 @@ def run_one_arm(
     godot: Path,
     python_exe: Path,
 ) -> dict[str, Any]:
-    item = helper.run_arm(
-        repo=repo,
-        d3=d3,
-        experiment_root=pair_root,
-        source=source,
-        source_sha=source_sha,
-        arm={"arm_id": arm_id, "food_position": list(PRIMARY_POSITION)},
-        godot=godot,
-        python_exe=python_exe,
-    )
+    helper._e1d_current_arm = arm_id
+    try:
+        item = helper.run_arm(
+            repo=repo,
+            d3=d3,
+            experiment_root=pair_root,
+            source=source,
+            source_sha=source_sha,
+            arm={"arm_id": arm_id, "food_position": list(PRIMARY_POSITION)},
+            godot=godot,
+            python_exe=python_exe,
+        )
+    finally:
+        helper._e1d_current_arm = ""
     return {
         "status": "PASS",
         "metrics": item["metrics"],
@@ -497,6 +544,26 @@ def self_test() -> None:
     assert result == "SEED_SENSITIVE"
     assert counts["opposite_count"] == 1
 
+    synthetic_bridge = (
+        "func e1_d3_state(agent) -> Dictionary:\n"
+        "\treturn {}\n"
+        "func should_pause_simulation() -> bool:\n"
+        "\treturn false\n"
+    )
+    bridge = density_lightweight_bridge_state(synthetic_bridge)
+    assert "var peer_present: bool = bool(" in bridge
+    assert "var peer_stock: float = -1.0" in bridge
+    assert "var peer_active: bool = false" in bridge
+    assert "peer_present :=" not in bridge
+
+    synthetic_world = (
+        "func _init() -> void:\n"
+        "\tobjects.o1.stock = BOWL_CAPACITY\n"
+    )
+    rich_world = inject_peer_world_runtime(synthetic_world)
+    assert 'objects["e1d_food_peer"] = objects.o1.duplicate(true)' in rich_world
+    assert 'objects["e1d_food_peer"]["position"] = Vector3(4.0, 0.0, 0.0)' in rich_world
+
     print("SELF_TEST: PASS")
     print("STAGE: E1-D")
     print("HYPOTHESIS: H1b resource density")
@@ -510,10 +577,128 @@ def self_test() -> None:
     print("PRODUCTION_RUNTIME_MUTATION: NONE")
 
 
+def apparatus_preflight(repo: Path) -> int:
+    if not REGISTRATION_PATH.is_file():
+        raise DensityError(f"Missing registration: {REGISTRATION_PATH}")
+    if sha256_file(REGISTRATION_PATH) != REGISTRATION_SHA256:
+        raise DensityError("Registration SHA mismatch during apparatus preflight.")
+
+    registration = load_json(REGISTRATION_PATH)
+    seeds, runtime_commit = validate_registration(registration)
+    helper = load_h1a_helper(repo)
+    configure_helper(helper, repo, runtime_commit, int(seeds[0]))
+    install_density_metrics(helper)
+    d3 = helper.load_d3_helper(repo)
+    godot = helper.discover_godot(repo)
+
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    root = EVIDENCE_ROOT / f"e1-d-apparatus-preflight-{stamp}-{runtime_commit[:7]}"
+    root.mkdir(parents=True, exist_ok=False)
+    results: dict[str, Any] = {}
+
+    for arm_id in ("rich", "sparse"):
+        sandbox = root / f"sandbox_{arm_id}"
+        save_path = root / f"{arm_id}.json"
+        stdout_path = root / f"{arm_id}.stdout.txt"
+        stderr_path = root / f"{arm_id}.stderr.txt"
+
+        helper.arm_snapshot(
+            SOURCE_SNAPSHOT,
+            save_path,
+            list(PRIMARY_POSITION),
+        )
+        helper.run(
+            ["git", "worktree", "add", "--detach", str(sandbox), runtime_commit],
+            cwd=repo,
+            timeout=120,
+        )
+        try:
+            helper._e1d_current_arm = arm_id
+            hashes = helper.write_instrumented_runtime(repo, sandbox, d3)
+            command = [
+                str(godot),
+                "--headless",
+                "--path", str(sandbox),
+                "--",
+                "--smoke",
+                f"--save-path={save_path}",
+                "--quit-after=2",
+            ]
+            try:
+                cp = subprocess.run(
+                    command,
+                    cwd=sandbox,
+                    text=True,
+                    capture_output=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    timeout=30,
+                )
+                stdout_path.write_text(cp.stdout, encoding="utf-8")
+                stderr_path.write_text(cp.stderr, encoding="utf-8")
+                status = "PASS" if cp.returncode == 0 else "FAIL"
+                returncode = cp.returncode
+            except subprocess.TimeoutExpired as exc:
+                stdout = exc.stdout or ""
+                stderr = exc.stderr or ""
+                if isinstance(stdout, bytes):
+                    stdout = stdout.decode("utf-8", errors="replace")
+                if isinstance(stderr, bytes):
+                    stderr = stderr.decode("utf-8", errors="replace")
+                stdout_path.write_text(str(stdout), encoding="utf-8")
+                stderr_path.write_text(str(stderr), encoding="utf-8")
+                status = "TIMEOUT"
+                returncode = None
+
+            results[arm_id] = {
+                "status": status,
+                "returncode": returncode,
+                "instrumented_runtime_sha256": hashes,
+                "stdout_path": str(stdout_path),
+                "stderr_path": str(stderr_path),
+            }
+            if status != "PASS":
+                raise DensityError(
+                    f"{arm_id} apparatus compile/startup preflight {status}; "
+                    f"see {stderr_path}"
+                )
+        finally:
+            helper._e1d_current_arm = ""
+            helper.remove_worktree(repo, sandbox)
+
+    report = {
+        "stage": STAGE,
+        "purpose": "apparatus compile/startup preflight only",
+        "runtime_commit": runtime_commit,
+        "registration_sha256": REGISTRATION_SHA256,
+        "results": results,
+        "scientific_result": None,
+        "production_runtime_mutation": "none",
+    }
+    report_path = root / "preflight-report.json"
+    report_path.write_text(
+        json.dumps(report, ensure_ascii=False, indent=2) + "\\n",
+        encoding="utf-8",
+    )
+
+    print("=" * 72)
+    print("E1-D APPARATUS PREFLIGHT: PASS")
+    print(f"EVIDENCE: {root}")
+    print("RICH_COMPILE_STARTUP: PASS")
+    print("SPARSE_COMPILE_STARTUP: PASS")
+    print("RICH_PEER_RUNTIME_MATERIALIZATION: ENABLED_IN_THROWAWAY_RUNTIME")
+    print("SCIENTIFIC_RESULT: NONE")
+    print("PRODUCTION_RUNTIME_MUTATION: NONE")
+    print(f"REPORT: {report_path}")
+    print("=" * 72)
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="E1-D H1b paired resource-density harness.")
     parser.add_argument("--repo", default=str(REPO_DEFAULT))
     parser.add_argument("--self-test", action="store_true")
+    parser.add_argument("--apparatus-preflight", action="store_true")
     args = parser.parse_args()
 
     if args.self_test:
@@ -522,6 +707,9 @@ def main() -> int:
 
     self_test()
     repo = Path(args.repo).resolve()
+
+    if args.apparatus_preflight:
+        return apparatus_preflight(repo)
 
     if not REGISTRATION_PATH.is_file():
         raise DensityError(f"Missing registration: {REGISTRATION_PATH}")
