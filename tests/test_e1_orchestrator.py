@@ -33,7 +33,7 @@ class TestE1Orchestrator(unittest.TestCase):
         self.assertIs(data["policy"]["require_human_registration"], True)
 
         experiments = data["experiments"]
-        self.assertEqual(len(experiments), 1)
+        self.assertEqual(len(experiments), 2)
         h1a = experiments[0]
         self.assertEqual(h1a["experiment_id"], "E1-B-H1a-resource-distance-v1")
         self.assertEqual(h1a["stage"], "E1-B")
@@ -42,6 +42,15 @@ class TestE1Orchestrator(unittest.TestCase):
         self.assertEqual(h1a["predecessor_issue"], 32)
         self.assertIs(h1a["auto_push_pr"], False)
         self.assertIs(h1a["allow_issue_close"], False)
+
+        e1c = experiments[1]
+        self.assertEqual(e1c["experiment_id"], "E1-C-H1a-seed-replication-v1")
+        self.assertEqual(e1c["stage"], "E1-C")
+        self.assertEqual(e1c["state"], "registered")
+        self.assertEqual(e1c["execution_issue"], 62)
+        self.assertEqual(e1c["predecessor_issue"], 59)
+        self.assertIs(e1c["auto_push_pr"], False)
+        self.assertIs(e1c["allow_issue_close"], False)
 
     def test_spec_parser_rejects_malformed_values(self):
         module = load_module()
@@ -117,6 +126,17 @@ class TestE1Orchestrator(unittest.TestCase):
             self.assertIsNone(
                 module.select_next([accepted, candidate], ROOT, "owner/repo")
             )
+
+    def test_streaming_runner_does_not_capture_output(self):
+        module = load_module()
+        completed = type("Completed", (), {"returncode": 7})()
+        with patch.object(module.subprocess, "run", return_value=completed) as mocked:
+            code = module.run_streaming(["python", "experiment.py"], cwd=ROOT)
+        self.assertEqual(code, 7)
+        kwargs = mocked.call_args.kwargs
+        self.assertNotIn("capture_output", kwargs)
+        self.assertNotIn("stdout", kwargs)
+        self.assertNotIn("stderr", kwargs)
 
 
 if __name__ == "__main__":

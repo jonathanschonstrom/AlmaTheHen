@@ -138,6 +138,11 @@ def run(
     return result
 
 
+def run_streaming(args: Iterable[str], *, cwd: Path) -> int:
+    argv = [str(arg) for arg in args]
+    cp = subprocess.run(argv, cwd=cwd)
+    return int(cp.returncode)
+
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -391,19 +396,12 @@ def run_next(repo: Path, slug: str, dry_run: bool) -> int:
             "but v1 deliberately forbids that capability."
         )
 
-    result = run(
-        spec.command,
-        cwd=repo,
-        check=False,
-        timeout=None,
-    )
-    sys.stdout.write(result.stdout)
-    sys.stderr.write(result.stderr)
-    print(f"EXPERIMENT_EXIT_CODE: {result.returncode}")
+    exit_code = run_streaming(spec.command, cwd=repo)
+    print(f"EXPERIMENT_EXIT_CODE: {exit_code}")
     print("MERGE: NOT PERFORMED")
     print("ISSUE_CLOSE: NOT PERFORMED")
     print("HUMAN_REVIEW_REQUIRED: YES")
-    return result.returncode
+    return exit_code
 
 
 def verify_registry(repo: Path, slug: str) -> int:

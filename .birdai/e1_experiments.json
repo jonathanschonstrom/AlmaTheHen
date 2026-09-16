@@ -26,6 +26,24 @@
       "expected_runtime_parent": "2b7326823026cc4ba9d1f35570c6ecaa6873ca2d",
       "auto_push_pr": false,
       "allow_issue_close": false
+    },
+    {
+      "experiment_id": "E1-C-H1a-seed-replication-v1",
+      "stage": "E1-C",
+      "state": "registered",
+      "execution_issue": 62,
+      "predecessor_issue": 59,
+      "registration_path": "C:\\BirdAI_E1_evidence\\registrations\\e1-c-h1a-seed-replication-v1.json",
+      "registration_sha256": "948c0453748bd110384a513cb21d9c10684fde410721103c9e86c449ce2dfecb",
+      "harness_path": ".birdai/e1_c_h1a_seed_replication.py",
+      "command": [
+        "C:\\BirdAI_P1_env\\Scripts\\python.exe",
+        "-B",
+        ".birdai/e1_c_h1a_seed_replication.py"
+      ],
+      "expected_runtime_parent": "bf59c58043c2e7991e7b8c5251795b4489d69564",
+      "auto_push_pr": false,
+      "allow_issue_close": false
     }
   ]
 }
