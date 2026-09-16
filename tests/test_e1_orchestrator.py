@@ -33,7 +33,7 @@ class TestE1Orchestrator(unittest.TestCase):
         self.assertIs(data["policy"]["require_human_registration"], True)
 
         experiments = data["experiments"]
-        self.assertEqual(len(experiments), 2)
+        self.assertEqual(len(experiments), 3)
         h1a = experiments[0]
         self.assertEqual(h1a["experiment_id"], "E1-B-H1a-resource-distance-v1")
         self.assertEqual(h1a["stage"], "E1-B")
@@ -57,6 +57,18 @@ class TestE1Orchestrator(unittest.TestCase):
         self.assertEqual(e1c["predecessor_issue"], 59)
         self.assertIs(e1c["auto_push_pr"], False)
         self.assertIs(e1c["allow_issue_close"], False)
+        e1d = experiments[2]
+        self.assertEqual(e1d["experiment_id"], "E1-D-H1b-resource-density-v1")
+        self.assertEqual(e1d["stage"], "E1-D")
+        self.assertEqual(e1d["state"], "registered")
+        self.assertEqual(e1d["execution_issue"], 65)
+        self.assertEqual(e1d["predecessor_issue"], 62)
+        self.assertEqual(
+            e1d["registration_sha256"],
+            "b35a58950e1ba12f2e6006b817cbaa04d16926baca0d37272f04cbe8f0c0a88c",
+        )
+        self.assertIs(e1d["auto_push_pr"], False)
+        self.assertIs(e1d["allow_issue_close"], False)
 
     def test_spec_parser_rejects_malformed_values(self):
         module = load_module()
