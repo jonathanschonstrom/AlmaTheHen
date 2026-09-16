@@ -56,6 +56,24 @@
         "seed_sensitivity": true,
         "human_review_required_for_issue_close": true
       }
+    },
+    {
+      "experiment_id": "E1-D-H1b-resource-density-v1",
+      "stage": "E1-D",
+      "state": "registered",
+      "execution_issue": 65,
+      "predecessor_issue": 62,
+      "registration_path": "C:\\BirdAI_E1_evidence\\registrations\\e1-d-h1b-resource-density-v1.json",
+      "registration_sha256": "b35a58950e1ba12f2e6006b817cbaa04d16926baca0d37272f04cbe8f0c0a88c",
+      "harness_path": ".birdai/e1_d_h1b_resource_density.py",
+      "command": [
+        "C:\\BirdAI_P1_env\\Scripts\\python.exe",
+        "-B",
+        ".birdai/e1_d_h1b_resource_density.py"
+      ],
+      "expected_runtime_parent": "e41a406375d0309fd4e7d3c7e20df4f16966fd64",
+      "auto_push_pr": false,
+      "allow_issue_close": false
     }
   ]
 }
