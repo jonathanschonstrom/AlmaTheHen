@@ -20,6 +20,17 @@ def load_harness():
 
 
 class E1DApparatusRepairTests(unittest.TestCase):
+    def test_preflight_report_serialization_uses_real_newline(self):
+        source = HARNESS.read_text(encoding="utf-8")
+        self.assertNotIn(
+            'json.dumps(report, ensure_ascii=False, indent=2) + "\\\\n",',
+            source,
+        )
+        self.assertIn(
+            'json.dumps(report, ensure_ascii=False, indent=2) + "\\n",',
+            source,
+        )
+
     @classmethod
     def setUpClass(cls):
         cls.harness = load_harness()

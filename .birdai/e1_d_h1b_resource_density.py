@@ -677,7 +677,7 @@ def apparatus_preflight(repo: Path) -> int:
     }
     report_path = root / "preflight-report.json"
     report_path.write_text(
-        json.dumps(report, ensure_ascii=False, indent=2) + "\\n",
+        json.dumps(report, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
 
