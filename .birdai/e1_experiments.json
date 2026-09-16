@@ -30,7 +30,7 @@
     {
       "experiment_id": "E1-C-H1a-seed-replication-v1",
       "stage": "E1-C",
-      "state": "registered",
+      "state": "accepted",
       "execution_issue": 62,
       "predecessor_issue": 59,
       "registration_path": "C:\\BirdAI_E1_evidence\\registrations\\e1-c-h1a-seed-replication-v1.json",
@@ -43,7 +43,19 @@
       ],
       "expected_runtime_parent": "bf59c58043c2e7991e7b8c5251795b4489d69564",
       "auto_push_pr": false,
-      "allow_issue_close": false
+      "allow_issue_close": false,
+      "acceptance": {
+        "stage_validity": "PASS",
+        "replication_result": "SEED_SENSITIVE",
+        "summary_sha256": "045a0c71c7e50a494bdb06eddc8ed13e1a6854c7521a8fde3c7ea4a709a62c65",
+        "evidence_path": "C:\\BirdAI_E1_evidence\\e1-c-h1a-20260916T152703Z-bf59c58",
+        "valid_pair_count": 5,
+        "support_count": 5,
+        "opposite_count": 2,
+        "neutral_pair_count": 0,
+        "seed_sensitivity": true,
+        "human_review_required_for_issue_close": true
+      }
     }
   ]
 }
