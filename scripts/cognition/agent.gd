@@ -39,6 +39,8 @@ var trial_start = Vector3.ZERO
 var distance_walked = 0.0
 var last_reward = 0.0
 var last_prediction_error = 0.0
+var last_causal_outcome = {}
+const SEMANTIC_CONTACT_ACTIONS = ["eat", "drink", "social", "inspect", "peck", "push", "bite"]
 var support_id = ""
 var ascent_powered = false
 var last_perch_attempts = {}
@@ -140,6 +142,7 @@ func select_action() -> void:
 		neural_selection_ready = false
 		current = neural_actuator.resolve(self, family)
 		if current.is_empty():
+			record_resolution_failure(family)
 			thought = "NeuralBrain valde %s men inget aktuellt mål kunde utföras." % family
 			return
 		current["neural_request_id"] = neural_request_id
@@ -148,6 +151,7 @@ func select_action() -> void:
 			"family": family,
 			"action": str(current.get("action", "")),
 			"target": str(current.get("target", "")),
+			"resolution": "resolved",
 			"age": age
 		}
 	else:
@@ -196,7 +200,10 @@ func approach(dt: float) -> void:
 		begin_act()
 		return
 	if phase_time > 18.0 + personality.persistence * 10.0:
-		finish({"outcomes": {}, "success": false, "outcome": "Vägen fram fungerade inte. Jag provar något annat.", "donor": ""})
+		if semantic_contact_action(str(current.get("action", ""))):
+			finish_execution_failure("approach_timeout", "Vägen fram fungerade inte. Jag provar något annat.")
+		else:
+			finish({"outcomes": {}, "success": false, "outcome": "Vägen fram fungerade inte. Jag provar något annat.", "donor": ""})
 		return
 	heading = heading.lerp(delta.normalized(), minf(1, dt * 6)).normalized()
 	var speed = 1.6 if current.action == "flee" else 0.73
@@ -303,11 +310,24 @@ func act(dt: float) -> void:
 		outcome = {"outcomes": {"sensory_stimulation": 0.18, "physical_effort": 0.055, "motor_information": clampf(trial_height * 0.6 + trial_airtime * 0.1, 0.0, 0.4)}, "success": trial_height > 0.25, "outcome": "Vingförsök: %.0f cm höjd, %.2f s i luften." % [trial_height * 100, trial_airtime], "donor": ""}
 	else:
 		# Verify contact again before an effect. No remote eating, drinking or manipulation.
+		var scoped_contact_action = semantic_contact_action(str(current.get("action", "")))
+		if scoped_contact_action and not world.objects.has(current.target):
+			finish_execution_failure("target_lost", "Föremålet fanns inte längre kvar att nå.")
+			return
 		if world.objects.has(current.target):
 			var obj = world.objects[current.target]
 			var separation = Vector2(obj.position.x, obj.position.z).distance_to(Vector2(position.x, position.z))
-			if not obj.active or separation > 1.0 or (current.action in ["eat", "drink"] and absf(position.y - obj.position.y) > 0.25):
-				finish({"outcomes": {}, "success": false, "outcome": "Föremålet var inte längre inom räckhåll.", "donor": ""})
+			if not obj.active:
+				if scoped_contact_action:
+					finish_execution_failure("target_lost", "Föremålet var inte längre tillgängligt.")
+				else:
+					finish({"outcomes": {}, "success": false, "outcome": "Föremålet var inte längre inom räckhåll.", "donor": ""})
+				return
+			if separation > 1.0 or (current.action in ["eat", "drink"] and absf(position.y - obj.position.y) > 0.25):
+				if scoped_contact_action:
+					finish_execution_failure("out_of_reach", "Föremålet var inte längre inom räckhåll.")
+				else:
+					finish({"outcomes": {}, "success": false, "outcome": "Föremålet var inte längre inom räckhåll.", "donor": ""})
 				return
 		if not current.get("context", "").is_empty():
 			# Observe the lamp at contact, before pressing it can change the signal.
@@ -317,33 +337,93 @@ func act(dt: float) -> void:
 				current.expected = learning.model(current.target, current.action, context).effects.duplicate(true)
 			current.context = context
 		outcome = world.perform(current.action, current.target, position, heading)
+		finish(outcome, {
+			"resolution": "resolved",
+			"execution": "reached",
+			"execution_reason": "",
+			"contact_reached": true,
+			"interaction": "executed",
+			"consequence": "success" if bool(outcome.get("success", false)) else "failure",
+			"semantic_eligible": true
+		})
+		return
 	finish(outcome)
 
-func finish(result: Dictionary) -> void:
+func semantic_contact_action(action: String) -> bool:
+	return action in SEMANTIC_CONTACT_ACTIONS
+
+func record_resolution_failure(family: String) -> void:
+	last_causal_outcome = {
+		"selected_family": family,
+		"resolution": "no_target",
+		"execution": "not_started",
+		"execution_reason": "no_target",
+		"contact_reached": false,
+		"interaction": "not_executed",
+		"consequence": "not_observed",
+		"semantic_eligible": false,
+		"learning_update": false,
+		"learning_model": "",
+		"context_model": ""
+	}
+	neural_last_actuation = {
+		"request_id": neural_request_id,
+		"family": family,
+		"action": "",
+		"target": "",
+		"resolution": "no_target",
+		"age": age
+	}
+	memory.add_episode({
+		"time": age,
+		"target": "",
+		"action": "",
+		"context": "",
+		"outcome": "NeuralBrain valde en familj men inget aktuellt mål kunde lösas.",
+		"reward": 0.0,
+		"position": vec(position),
+		"effects": {},
+		"outcomes": {},
+		"expected": {},
+		"prediction_error": null,
+		"causal": last_causal_outcome.duplicate(true)
+	})
+
+func finish_execution_failure(reason: String, outcome_text: String) -> void:
+	finish(
+		{"outcomes": {}, "success": false, "outcome": outcome_text, "donor": ""},
+		{
+			"resolution": "resolved",
+			"execution": "failed",
+			"execution_reason": reason,
+			"contact_reached": false,
+			"interaction": "not_executed",
+			"consequence": "not_observed",
+			"semantic_eligible": false
+		}
+	)
+
+func finish(result: Dictionary, causal_stage: Dictionary = {}) -> void:
 	var before = current.get("body_before", body.needs.duplicate(true)).duplicate(true)
 	var error_before = float(current.get("error_before", body.homeostatic_error()))
 	var outcomes = result.get("outcomes", {}).duplicate(true)
 	var experienced_outcomes = outcomes.duplicate(true)
-	# Information gain is subjective: repeating a known target/action produces less new
-	# information even when the physical sensory event itself is identical.
+	var semantic_eligible = bool(causal_stage.get("semantic_eligible", true))
 	var raw_information = maxf(0.0, float(outcomes.get("information_gain", 0.0)))
 	var experienced_information = raw_information
 	if raw_information > 0.0:
 		var prior_model = learning.model(current.target, current.action, current.get("context", ""))
 		experienced_information = raw_information / (1.0 + float(prior_model.count) * 0.75)
 		experienced_outcomes.information_gain = experienced_information
-	# Transitional support for any unconverted caller; new world code uses only outcomes.
 	if outcomes.is_empty() and result.get("effects") is Dictionary and not result.effects.is_empty():
 		body.apply(result.effects)
 	else:
 		body.apply_outcome(experienced_outcomes)
 	var effects = body.drive_effects(before)
-	# Consequences that are not body deficits remain available to the cognitive learner.
 	for key in ["food_access", "object_motion", "motor_information"]:
 		if outcomes.has(key):
 			effects[key] = float(outcomes[key])
 	var reward = (error_before - body.homeostatic_error()) * 1.8
-	# Novel information is intrinsically rewarding; routine sensory throughput is only weakly so.
 	reward += experienced_information * 0.16
 	reward += maxf(0.0, float(outcomes.get("sensory_stimulation", 0.0))) * 0.02
 	if outcomes.has("food_access"):
@@ -351,19 +431,39 @@ func finish(result: Dictionary) -> void:
 	if not result.success:
 		reward -= 0.08
 		body.frustration += 0.06
-	var learned = learning.learn(current.target, current.action, effects, reward, result.success, result.outcome, current.get("context", ""))
-	last_prediction_error = learned.prediction_error
+	var prediction_error = null
+	var learning_update = false
+	if semantic_eligible:
+		var learned = learning.learn(current.target, current.action, effects, reward, result.success, result.outcome, current.get("context", ""))
+		prediction_error = learned.prediction_error
+		last_prediction_error = float(learned.prediction_error)
+		learning_update = true
+	else:
+		last_prediction_error = 0.0
 	last_reward = reward
 	if raw_information > 0.0:
 		experienced_outcomes["raw_information_gain"] = raw_information
-	memory.add_episode({"time": age, "target": current.target, "action": current.action, "context": current.get("context", ""), "outcome": result.outcome, "reward": reward, "position": vec(position), "effects": effects, "outcomes": experienced_outcomes, "expected": current.expected, "prediction_error": learned.prediction_error})
+	var context = str(current.get("context", ""))
+	last_causal_outcome = {
+		"selected_family": action_family(str(current.get("action", ""))),
+		"resolution": str(causal_stage.get("resolution", "resolved")),
+		"execution": str(causal_stage.get("execution", "reached")),
+		"execution_reason": str(causal_stage.get("execution_reason", "")),
+		"contact_reached": bool(causal_stage.get("contact_reached", true)),
+		"interaction": str(causal_stage.get("interaction", "executed")),
+		"consequence": str(causal_stage.get("consequence", "success" if bool(result.get("success", false)) else "failure")),
+		"semantic_eligible": semantic_eligible,
+		"learning_update": learning_update,
+		"learning_model": current.target + ":" + current.action if learning_update else "",
+		"context_model": current.target + ":" + current.action + "@" + context if learning_update and not context.is_empty() else ""
+	}
+	memory.add_episode({"time": age, "target": current.target, "action": current.action, "context": context, "outcome": result.outcome, "reward": reward, "position": vec(position), "effects": effects, "outcomes": experienced_outcomes, "expected": current.get("expected", {}), "prediction_error": prediction_error, "causal": last_causal_outcome.duplicate(true)})
 	last_actions[current.target + ":" + current.action] = age
 	last_actions[current.action] = age
 	if result.get("donor", "") == "o8":
 		relationship.trust = minf(1, relationship.trust + (0.055 if current.action == "eat" else 0.015))
 		relationship.attachment = minf(1, relationship.attachment + 0.008)
 		relationship.positive += 1
-	# Very slow personality plasticity preserves the dominant hen temperament.
 	if current.action in ["inspect", "peck", "bite", "push", "wings"]:
 		personality.curiosity = clampf(personality.curiosity + clampf(reward, -0.1, 0.3) * 0.001, 0.38, 0.72)
 	thought = result.outcome
