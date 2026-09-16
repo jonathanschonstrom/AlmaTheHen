@@ -60,7 +60,17 @@ class TestE1Orchestrator(unittest.TestCase):
         e1d = experiments[2]
         self.assertEqual(e1d["experiment_id"], "E1-D-H1b-resource-density-v1")
         self.assertEqual(e1d["stage"], "E1-D")
-        self.assertEqual(e1d["state"], "registered")
+        self.assertEqual(e1d["state"], "accepted")
+        self.assertEqual(e1d["acceptance"]["stage_validity"], "PASS")
+        self.assertEqual(e1d["acceptance"]["hypothesis_result"], "SEED_SENSITIVE")
+        self.assertEqual(e1d["acceptance"]["summary_sha256"], "c068003a5eb471ff6b92f7edf897f2b0dd1a83098fe65d9d91ccb28b7d00b002")
+        self.assertEqual(e1d["acceptance"]["valid_pair_count"], 5)
+        self.assertEqual(e1d["acceptance"]["support_count"], 4)
+        self.assertEqual(e1d["acceptance"]["opposite_count"], 4)
+        self.assertEqual(e1d["acceptance"]["neutral_pair_count"], 0)
+        self.assertIs(e1d["acceptance"]["seed_sensitivity"], True)
+        self.assertIs(e1d["acceptance"]["invalid_first_attempt_retained"], True)
+        self.assertIs(e1d["acceptance"]["human_review_required_for_issue_close"], True)
         self.assertEqual(e1d["execution_issue"], 65)
         self.assertEqual(e1d["predecessor_issue"], 62)
         self.assertEqual(

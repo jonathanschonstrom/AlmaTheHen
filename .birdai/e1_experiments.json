@@ -60,7 +60,7 @@
     {
       "experiment_id": "E1-D-H1b-resource-density-v1",
       "stage": "E1-D",
-      "state": "registered",
+      "state": "accepted",
       "execution_issue": 65,
       "predecessor_issue": 62,
       "registration_path": "C:\\BirdAI_E1_evidence\\registrations\\e1-d-h1b-resource-density-v1.json",
@@ -73,7 +73,21 @@
       ],
       "expected_runtime_parent": "e41a406375d0309fd4e7d3c7e20df4f16966fd64",
       "auto_push_pr": false,
-      "allow_issue_close": false
+      "allow_issue_close": false,
+      "acceptance": {
+        "stage_validity": "PASS",
+        "hypothesis_result": "SEED_SENSITIVE",
+        "summary_sha256": "c068003a5eb471ff6b92f7edf897f2b0dd1a83098fe65d9d91ccb28b7d00b002",
+        "evidence_path": "C:\\BirdAI_E1_evidence\\e1-d-h1b-20260916T203230Z-e41a406",
+        "valid_pair_count": 5,
+        "support_count": 4,
+        "opposite_count": 4,
+        "neutral_pair_count": 0,
+        "seed_sensitivity": true,
+        "recovery_record_sha256": "6975ca6f87b6b54c6aeafd88ee96f480b4c10e6a34f7c6bdc87b712bd3d7211e",
+        "invalid_first_attempt_retained": true,
+        "human_review_required_for_issue_close": true
+      }
     }
   ]
 }
