@@ -1,21 +1,47 @@
 {
+  "execution_backend": "qwen",
   "goal": {
-    "slice_id": "infra-e1-resumable-lifecycle-001",
-    "issue": "User request 2026-09-17: finish the registered E1 experiment lifecycle",
-    "objective": "Implement a restartable lifecycle from preregistration and apparatus preflight through verified evidence, acceptance PR, explicitly approved merge, post-merge checks and separately approved issue closure.",
-    "pass_definition": "Each transition is verified and persisted; replay does not duplicate experiments or PRs; failed attempts retain evidence and budget; exact-head merge and issue-close gates are separate; targeted regression and process-tree tests pass."
+    "slice_id": "e1-e-h2-apparatus-independent-review",
+    "issue": "71",
+    "objective": "Independently review the preregistered E1-E H2 apparatus integration against the frozen registration. Diagnose mismatches, leakage, lifecycle/governance violations, or implementation defects. This is a read-only review: do not modify repository files and do not execute the scientific experiment.",
+    "pass_definition": "Review the supplied apparatus, registry, lifecycle integration, frozen registration fixture, E1-D predecessor harness, and tests. Report concrete concerns in the terminal structured diagnosis. Make no repository changes. The coordinator must independently run and pass all 49 authoritative regression tests."
   },
-  "allowed_files": [
-    ".birdai/lifecycle_store.py", ".birdai/lifecycle_process.py", ".birdai/lifecycle_evidence.py",
-    ".birdai/lifecycle_engine.py", ".birdai/lifecycle_github.py", ".birdai/e1_lifecycle.py",
-    ".birdai/Run-Lifecycle.ps1", ".birdai/LIFECYCLE.md", "tests/test_e1_lifecycle.py", "AI_TASK.json"
+  "allowed_files": [],
+  "context_files": [
+    ".birdai/e1_e_h2_early_explore_predictor.py",
+    ".birdai/lifecycle_evidence.py",
+    ".birdai/lifecycle_github.py",
+    ".birdai/e1_experiments.json",
+    ".birdai/e1_d_h1b_resource_density.py",
+    ".birdai/LIFECYCLE.md",
+    "tests/fixtures/e1-e-h2-early-explore-predictor-v1.json",
+    "tests/test_e1_e_h2_early_explore_predictor.py",
+    "tests/test_e1_e_lifecycle_compatibility.py",
+    "tests/test_e1_orchestrator.py"
   ],
   "validation": {
-    "shell": "Python", "command": "Targeted unittest discovery for test_e1_lifecycle.py and test_e1_orchestrator.py in the isolated branch, including harmless owned subprocess fixtures; no experiment or remote publication.",
-    "timeout_seconds": 60,
-    "timeout_reason": "Integration tests deliberately exercise process-tree timeout and cleanup, plus local temporary Git remotes."
+    "shell": "Python",
+    "command": "import subprocess,sys\npatterns=[('test_e1_e_h2_early_explore_predictor.py', 15), ('test_e1_e_lifecycle_compatibility.py', 4), ('test_e1_d_h1b_resource_density.py', 5), ('test_e1_lifecycle.py', 21), ('test_e1_orchestrator.py', 4)]\nfor pattern, expected in patterns:\n    cp=subprocess.run([sys.executable,'-B','-m','unittest','discover','-s','tests','-p',pattern,'-v'], text=True, capture_output=True)\n    sys.stdout.write(cp.stdout)\n    sys.stderr.write(cp.stderr)\n    combined=(cp.stdout or '')+(cp.stderr or '')\n    if cp.returncode != 0 or f'Ran {expected} test' not in combined or '\\nOK' not in combined.replace('\\r\\n','\\n'):\n        raise SystemExit(cp.returncode or 97)\nprint('QWEN_AUTHORITATIVE_VALIDATION: 49/49 PASS')\n",
+    "timeout_seconds": 300,
+    "timeout_reason": "Authoritative validation runs E1-E, E1-D, lifecycle process-tree, and orchestrator regressions on Windows."
   },
-  "max_attempts": {"diagnostic_runs": 1, "validation_runs": 1, "same_strategy_uses": 2},
-  "stop_conditions": ["scope_conflict", "unexpected_live_changes", "unconfirmed_process_cleanup"],
+  "max_attempts": {
+    "diagnostic_runs": 1,
+    "validation_runs": 1,
+    "same_strategy_uses": 1
+  },
+  "stop_conditions": [
+    "scientific_execution_attempted",
+    "frozen_registration_change_requested",
+    "seed_or_window_change_requested",
+    "repository_write_attempted",
+    "scope_or_authority_conflict",
+    "authoritative_validation_failure"
+  ],
+  "authority": {
+    "human_approval_required": true,
+    "human_approval_granted": true,
+    "approval_reference": "user-requested-qwen-participation-before-e1-e-apparatus-merge-2026-09-17"
+  },
   "result_schema": ".birdai/execution-result.schema.json"
 }

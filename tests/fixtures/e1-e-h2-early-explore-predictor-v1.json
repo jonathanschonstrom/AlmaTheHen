@@ -1,0 +1,252 @@
+{
+  "schema": 1,
+  "experiment": "E1-E-H2-early-explore-predictor-v1",
+  "stage": "E1-E",
+  "hypothesis_id": "H2",
+  "status": "FINAL_FROZEN_BEFORE_EXECUTION",
+  "parent_issue": 28,
+  "predecessor_issue": 65,
+  "hypothesis": "For five fresh preregistered paired seeds, the sign of the rich-vs-sparse difference in EXPLORE occupancy during the first 30 simulated seconds prospectively predicts the direction of the later rich-vs-sparse behavioral response measured only after 30 simulated seconds.",
+  "scientific_role": {
+    "e1_c_e1_d": "discovery/background only; not counted as E1-E validation pairs",
+    "e1_e": "prospective validation on fresh seeds"
+  },
+  "human_approved_parameters": {
+    "metric": "EXPLORE occupancy",
+    "early_window_sim_seconds": [
+      0.0,
+      30.0
+    ],
+    "seed_count": 5,
+    "seed_generation": "generate and freeze before execution",
+    "prediction_and_late_outcome_rule": "LOCKED"
+  },
+  "seed_manifest": {
+    "path": "C:\\BirdAI_E1_evidence\\registrations\\e1-e-h2-seed-manifest.json",
+    "sha256": "bb9e3108f382df25cc28f93b520662b9f110fdf70a9723220e5b79ace05f4e1f",
+    "generation_method": "Python secrets.randbelow using OS CSPRNG",
+    "generated_at_utc": "2026-09-17T11:39:03.884762+00:00"
+  },
+  "seed_set": [
+    1654930625,
+    1323201516,
+    643721773,
+    1673661858,
+    795032547
+  ],
+  "fresh_seed_exclusions": [
+    20260910,
+    889499301,
+    1357519266,
+    1853072130,
+    2095399255
+  ],
+  "pairing": {
+    "pairs": [
+      {
+        "seed": 1654930625,
+        "arms": [
+          "rich",
+          "sparse"
+        ]
+      },
+      {
+        "seed": 1323201516,
+        "arms": [
+          "rich",
+          "sparse"
+        ]
+      },
+      {
+        "seed": 643721773,
+        "arms": [
+          "rich",
+          "sparse"
+        ]
+      },
+      {
+        "seed": 1673661858,
+        "arms": [
+          "rich",
+          "sparse"
+        ]
+      },
+      {
+        "seed": 795032547,
+        "arms": [
+          "rich",
+          "sparse"
+        ]
+      }
+    ],
+    "fixed_order": [
+      "rich",
+      "sparse"
+    ],
+    "learned_carryover_between_runs": false,
+    "restore_immutable_snapshot_before_each_arm": true
+  },
+  "provenance": {
+    "source_snapshot": {
+      "path": "C:\\BirdAI_E1_evidence\\source-snapshots\\e1-a1-bootstrap-ab186b5.json",
+      "sha256": "3b42d55fc595bc7312e932dc9615c08e1ce2abe72f0f2bcc0984e9818e47b218"
+    },
+    "source_e1_d_registration": {
+      "path": "C:\\BirdAI_E1_evidence\\registrations\\e1-d-h1b-resource-density-v1.json",
+      "sha256": "b35a58950e1ba12f2e6006b817cbaa04d16926baca0d37272f04cbe8f0c0a88c"
+    },
+    "source_e1_d_accepted_summary": {
+      "path": "C:\\BirdAI_E1_evidence\\e1-d-h1b-20260916T203230Z-e41a406\\density-summary.json",
+      "sha256": "c068003a5eb471ff6b92f7edf897f2b0dd1a83098fe65d9d91ccb28b7d00b002",
+      "use": "background/discovery only"
+    },
+    "scientific_runtime_reference": "d931be650b955a6378785d0bf7ded4360461f447",
+    "note": "The E1-E implementation must verify that protected scientific runtime content is unchanged relative to this reference or stop before execution."
+  },
+  "apparatus": {
+    "mode": "paired_resource_density_early_predictor",
+    "alma_start_position": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "primary_tested_resource_id": "o1",
+    "primary_tested_resource_position": [
+      -4.0,
+      0.0,
+      0.0
+    ],
+    "peer_resource_id": "e1d_food_peer",
+    "peer_resource_position": [
+      4.0,
+      0.0,
+      0.0
+    ],
+    "nearest_tested_resource_distance_m": 4.0,
+    "distance_constant_across_arms": true,
+    "rich_tested_resource_count": 2,
+    "sparse_tested_resource_count": 1,
+    "run_horizon_sim_seconds": 180.0,
+    "protected_changes": {
+      "production_runtime_mutation": "none",
+      "neural_policy_change": "none",
+      "bg_retuning": "none",
+      "learning_rule_change": "none"
+    }
+  },
+  "primary_measures": [
+    "time_to_first_valid_food_interaction_seconds",
+    "total_distance_travelled_m",
+    "selected_explore_proportion",
+    "food_acquisition_rate_per_sim_minute"
+  ],
+  "early_predictor": {
+    "metric": "selected_explore_proportion",
+    "window_sim_seconds": [
+      0.0,
+      30.0
+    ],
+    "arm_contrast": "sparse_minus_rich",
+    "formula": "EXPLORE_sparse[0,30] - EXPLORE_rich[0,30]",
+    "label_rule": {
+      "delta_gt_0": "predicted",
+      "delta_lt_0": "opposite",
+      "delta_eq_0": "neutral"
+    },
+    "numeric_tolerance": "none; compare the computed values directly"
+  },
+  "late_outcome": {
+    "window_sim_seconds": [
+      30.0,
+      180.0
+    ],
+    "predictor_window_excluded": true,
+    "metric_directions": {
+      "time_to_first_valid_food_interaction_seconds": {
+        "predicted": "sparse later than rich",
+        "opposite": "sparse earlier than rich",
+        "neutral": "equal, including both arms censored after 30 s",
+        "censoring_rule": "If exactly one arm has no valid food interaction after 30 s, that arm is treated as later than the arm with an observed interaction.",
+        "measurement": "time from 30 s to first valid food interaction occurring after 30 s"
+      },
+      "total_distance_travelled_m": {
+        "predicted": "sparse greater than rich",
+        "opposite": "sparse less than rich",
+        "neutral": "equal",
+        "measurement": "distance accumulated only during (30,180] s"
+      },
+      "selected_explore_proportion": {
+        "predicted": "sparse greater than rich",
+        "opposite": "sparse less than rich",
+        "neutral": "equal",
+        "measurement": "EXPLORE occupancy proportion only during (30,180] s"
+      },
+      "food_acquisition_rate_per_sim_minute": {
+        "predicted": "sparse less than rich",
+        "opposite": "sparse greater than rich",
+        "neutral": "equal",
+        "measurement": "valid food acquisitions occurring only during (30,180] s divided by 2.5 simulated minutes"
+      }
+    },
+    "pair_label_rule": {
+      "predicted_metric_count": "count of late primary metrics labelled predicted",
+      "opposite_metric_count": "count of late primary metrics labelled opposite",
+      "score": "predicted_metric_count - opposite_metric_count",
+      "score_gt_0": "predicted",
+      "score_lt_0": "opposite",
+      "score_eq_0": "neutral"
+    }
+  },
+  "prediction_scoring": {
+    "pair_match": "early_predictor.label == late_outcome.pair_label",
+    "neutral_policy": "Any pair with a neutral early label or neutral late label makes the scientific stage classification INCONCLUSIVE when stage validity is PASS.",
+    "match_count": "number of the five valid pairs with matching non-neutral early and late labels"
+  },
+  "validity": {
+    "pair_values": [
+      "PASS",
+      "INVALID",
+      "BLOCKED"
+    ],
+    "stage_values": [
+      "PASS",
+      "INVALID",
+      "BLOCKED"
+    ],
+    "stage_pass_rule": "all five declared seed pairs must be valid PASS",
+    "invalid_attempt_policy": "Technical invalid attempts are retained as evidence and never silently rerun, overwritten, dropped, or converted into a scientific result.",
+    "scientific_result_when_stage_not_pass": null
+  },
+  "hypothesis_result": {
+    "values": [
+      "SUPPORTED",
+      "NOT_SUPPORTED",
+      "INCONCLUSIVE"
+    ],
+    "classification_order": [
+      "If stage validity is not PASS: no scientific result.",
+      "If any early or late pair label is neutral: INCONCLUSIVE.",
+      "If late labels do not contain at least one predicted and at least one opposite pair: INCONCLUSIVE.",
+      "If all 5 early labels match their corresponding late labels: SUPPORTED.",
+      "If at most 3 of 5 early labels match their corresponding late labels: NOT_SUPPORTED.",
+      "If exactly 4 of 5 early labels match their corresponding late labels: INCONCLUSIVE."
+    ],
+    "supported_rule": "all five pairs valid; no neutral early/late labels; both predicted and opposite late outcome classes occur; 5/5 early predictions match late labels",
+    "not_supported_rule": "all five pairs valid; no neutral early/late labels; both predicted and opposite late outcome classes occur; at most 3/5 early predictions match late labels",
+    "inconclusive_rule": "all five pairs valid and either exactly 4/5 predictions match, any early/late label is neutral, or only one non-neutral late outcome class occurs"
+  },
+  "anti_leakage_and_no_retuning": [
+    "No E1-E late outcome may be inspected before this registration is frozen.",
+    "No predictor threshold, window, metric, seed, geometry, outcome metric, direction, or classification rule may be changed after execution begins.",
+    "The early predictor uses only [0,30] s data; every late outcome measure uses only data after 30 s.",
+    "E1-C/E1-D results are background/discovery evidence only and are not validation observations.",
+    "No production NeuralBrain, BG, policy/action-value, or learning-rule retuning is permitted within E1-E.",
+    "Fresh seeds may not be replaced after the first E1-E execution attempt."
+  ],
+  "registration_lock": {
+    "final": true,
+    "human_approved": true,
+    "execution_started": false,
+    "locked_at_utc": "2026-09-17T11:43:06.448078+00:00"
+  }
+}

@@ -92,11 +92,9 @@ class GitHubPort:
         summary = read_json(Path(record["summary_path"]))
         counts = summary.get("hypothesis_counts")
         if isinstance(counts, dict):
-            for key in ("valid_pair_count", "support_count", "opposite_count", "neutral_pair_count"):
-                if key in counts:
-                    expected[key] = counts[key]
-            if "seed_sensitivity" in counts:
-                expected["seed_sensitivity"] = bool(counts["seed_sensitivity"])
+            for key, value in counts.items():
+                if value is None or isinstance(value, (str, int, float, bool)):
+                    expected[key] = value
         elif acceptance["hypothesis_result"] == "SEED_SENSITIVE":
             expected["seed_sensitivity"] = True
         return expected

@@ -88,6 +88,47 @@
         "invalid_first_attempt_retained": true,
         "human_review_required_for_issue_close": true
       }
+    },
+    {
+      "experiment_id": "E1-E-H2-early-explore-predictor-v1",
+      "stage": "E1-E",
+      "state": "registered",
+      "execution_issue": 71,
+      "predecessor_issue": 65,
+      "registration_path": "C:\\BirdAI_E1_evidence\\registrations\\e1-e-h2-early-explore-predictor-v1.json",
+      "registration_sha256": "0311621fb4493338d5785753da0c27ce490128170dc84bb4eb096e9b79eb01f1",
+      "harness_path": ".birdai/e1_e_h2_early_explore_predictor.py",
+      "command": [
+        "C:\\BirdAI_P1_env\\Scripts\\python.exe",
+        "-B",
+        ".birdai/e1_e_h2_early_explore_predictor.py"
+      ],
+      "expected_runtime_parent": "d931be650b955a6378785d0bf7ded4360461f447",
+      "auto_push_pr": false,
+      "allow_issue_close": false,
+      "lifecycle": {
+        "preflight": {
+          "argv": [
+            "C:\\BirdAI_P1_env\\Scripts\\python.exe",
+            "-B",
+            ".birdai/e1_e_h2_early_explore_predictor.py",
+            "--apparatus-preflight"
+          ],
+          "timeout_seconds": 180,
+          "timeout_reason": "Godot compile/startup preflight creates two throwaway worktrees and performs bounded headless smoke starts.",
+          "success_marker": "E1-E APPARATUS PREFLIGHT: PASS"
+        },
+        "run": {
+          "argv": [
+            "C:\\BirdAI_P1_env\\Scripts\\python.exe",
+            "-B",
+            ".birdai/e1_e_h2_early_explore_predictor.py"
+          ],
+          "timeout_seconds": 14400,
+          "timeout_reason": "Five paired seeds require ten bounded 180-second NeuralBrain runs; the lifecycle wrapper must outlive all retained runs."
+        },
+        "evidence_root": "C:\\BirdAI_E1_evidence"
+      }
     }
   ]
 }
