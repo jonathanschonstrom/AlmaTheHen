@@ -1,0 +1,21 @@
+{
+  "goal": {
+    "slice_id": "infra-e1-resumable-lifecycle-001",
+    "issue": "User request 2026-09-17: finish the registered E1 experiment lifecycle",
+    "objective": "Implement a restartable lifecycle from preregistration and apparatus preflight through verified evidence, acceptance PR, explicitly approved merge, post-merge checks and separately approved issue closure.",
+    "pass_definition": "Each transition is verified and persisted; replay does not duplicate experiments or PRs; failed attempts retain evidence and budget; exact-head merge and issue-close gates are separate; targeted regression and process-tree tests pass."
+  },
+  "allowed_files": [
+    ".birdai/lifecycle_store.py", ".birdai/lifecycle_process.py", ".birdai/lifecycle_evidence.py",
+    ".birdai/lifecycle_engine.py", ".birdai/lifecycle_github.py", ".birdai/e1_lifecycle.py",
+    ".birdai/Run-Lifecycle.ps1", ".birdai/LIFECYCLE.md", "tests/test_e1_lifecycle.py", "AI_TASK.json"
+  ],
+  "validation": {
+    "shell": "Python", "command": "Targeted unittest discovery for test_e1_lifecycle.py and test_e1_orchestrator.py in the isolated branch, including harmless owned subprocess fixtures; no experiment or remote publication.",
+    "timeout_seconds": 60,
+    "timeout_reason": "Integration tests deliberately exercise process-tree timeout and cleanup, plus local temporary Git remotes."
+  },
+  "max_attempts": {"diagnostic_runs": 1, "validation_runs": 1, "same_strategy_uses": 2},
+  "stop_conditions": ["scope_conflict", "unexpected_live_changes", "unconfirmed_process_cleanup"],
+  "result_schema": ".birdai/execution-result.schema.json"
+}
