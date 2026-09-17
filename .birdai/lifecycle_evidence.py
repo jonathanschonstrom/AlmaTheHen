@@ -6,6 +6,30 @@ from pathlib import Path
 from lifecycle_store import LifecycleError, digest, read_json
 
 
+def registered_runtime(registration: dict) -> str | None:
+    direct = registration.get("runtime_commit_at_registration")
+    if direct:
+        return str(direct)
+    provenance = registration.get("provenance")
+    if isinstance(provenance, dict):
+        value = provenance.get("scientific_runtime_reference")
+        if value:
+            return str(value)
+    return None
+
+
+def registered_source_snapshot(registration: dict) -> dict:
+    direct = registration.get("source_snapshot")
+    if isinstance(direct, dict) and direct.get("path") and direct.get("sha256"):
+        return direct
+    provenance = registration.get("provenance")
+    if isinstance(provenance, dict):
+        value = provenance.get("source_snapshot")
+        if isinstance(value, dict) and value.get("path") and value.get("sha256"):
+            return value
+    return {}
+
+
 def verify_summary(spec: dict, summary_path: Path, expected_hash: str | None = None) -> dict:
     registration_path = Path(spec["registration_path"])
     if digest(registration_path) != spec["registration_sha256"]:
@@ -25,10 +49,10 @@ def verify_summary(spec: dict, summary_path: Path, expected_hash: str | None = N
         raise LifecycleError("Summary is not a valid result for this stage.")
     if summary.get("registration_sha256") != spec["registration_sha256"]:
         raise LifecycleError("Summary/registration hash mismatch.")
-    runtime = registration.get("runtime_commit_at_registration")
+    runtime = registered_runtime(registration)
     if summary.get("runtime_commit") != runtime:
         raise LifecycleError("Summary used a different registered runtime.")
-    snapshot = registration.get("source_snapshot", {})
+    snapshot = registered_source_snapshot(registration)
     if not snapshot.get("path") or digest(Path(snapshot["path"])) != snapshot.get("sha256"):
         raise LifecycleError("Registered source snapshot is missing or changed.")
     if summary.get("accepted_source_snapshot_sha256") != snapshot["sha256"]:

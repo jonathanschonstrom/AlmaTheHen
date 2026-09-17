@@ -33,7 +33,7 @@ class TestE1Orchestrator(unittest.TestCase):
         self.assertIs(data["policy"]["require_human_registration"], True)
 
         experiments = data["experiments"]
-        self.assertEqual(len(experiments), 3)
+        self.assertEqual(len(experiments), 4)
         h1a = experiments[0]
         self.assertEqual(h1a["experiment_id"], "E1-B-H1a-resource-distance-v1")
         self.assertEqual(h1a["stage"], "E1-B")
@@ -79,6 +79,28 @@ class TestE1Orchestrator(unittest.TestCase):
         )
         self.assertIs(e1d["auto_push_pr"], False)
         self.assertIs(e1d["allow_issue_close"], False)
+
+        e1e = experiments[3]
+        self.assertEqual(e1e["experiment_id"], "E1-E-H2-early-explore-predictor-v1")
+        self.assertEqual(e1e["stage"], "E1-E")
+        self.assertEqual(e1e["state"], "registered")
+        self.assertEqual(e1e["predecessor_issue"], 65)
+        self.assertIsInstance(e1e["execution_issue"], int)
+        self.assertGreater(e1e["execution_issue"], 65)
+        self.assertEqual(
+            e1e["registration_sha256"],
+            "0311621fb4493338d5785753da0c27ce490128170dc84bb4eb096e9b79eb01f1",
+        )
+        self.assertEqual(
+            e1e["harness_path"],
+            ".birdai/e1_e_h2_early_explore_predictor.py",
+        )
+        self.assertEqual(
+            e1e["expected_runtime_parent"],
+            "d931be650b955a6378785d0bf7ded4360461f447",
+        )
+        self.assertIs(e1e["auto_push_pr"], False)
+        self.assertIs(e1e["allow_issue_close"], False)
 
     def test_spec_parser_rejects_malformed_values(self):
         module = load_module()
